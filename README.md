@@ -29,7 +29,7 @@
 ## Highlights
 
 - **VoiceBench 82.8 and Big Bench Audio 81.8%: the strongest brain among open full-duplex models.** #1 among open full-duplex models on both; level with GPT-4o-mini-Audio on VoiceBench.
-- **Paralinguistic understanding 48.6, #1 overall: it hears your tone.** Ahead of Gemini 3.8 Flash (46.9) and Qwen3-Omni (44.6) on LISTEN, StressTest and MSPB. It hears emotion, emphasis, sarcasm, laughter and sighs straight from your voice.
+- **Paralinguistic understanding 48.6, #1 overall: it hears your tone.** Ahead of Gemini 3.8 Flash (46.9) and Qwen3-Omni (44.6) on LISTEN, StressTest and MSPB. It hears emotion, emphasis, sarcasm, laughter and sighs straight from your voice. Its ears are [DuplexJev](https://github.com/adventists-ai/duplexjev), our open speech-decision model.
 - **NVV-SuperBench 0.74 (Chinese) and 0.68 (English): it speaks with tone.** The baseline without expression scores 0.37 / 0.27. The model decides from the conversation when to laugh, when to sigh, and when to clear a dry throat.
 - **Starts talking about 0.4 s after you stop: it's fast.** It listens the whole time you talk and drafts its reply as you go. When you cut in, it stops and answers your new question.
 - **Full-Duplex-Bench v3 tool calling: Pass@1 48%, ahead of Grok (43%), with a 100% response rate: it gets work done.** Live mode lets it work together with a larger backend model, and it is compatible with the OpenAI GPT-Live interface format. Every reply comes with an auditable transcript.

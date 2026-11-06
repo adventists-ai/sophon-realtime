@@ -29,7 +29,7 @@
 ## 亮点
 
 - **VoiceBench 82.8、Big Bench Audio 81.8%：开源全双工里最强的「脑子」。** 两项都是开源全双工模型第一，VoiceBench 与 GPT-4o-mini-Audio 持平。
-- **副语言理解 48.6，综合第一：听得懂语气。** 在 LISTEN、StressTest、MSPB 公开基准上高于 Gemini 3.8 Flash（46.9）和 Qwen3-Omni（44.6）。它直接从声音里听出情绪、重音、反讽、笑声和叹气。
+- **副语言理解 48.6，综合第一：听得懂语气。** 在 LISTEN、StressTest、MSPB 公开基准上高于 Gemini 3.8 Flash（46.9）和 Qwen3-Omni（44.6）。它直接从声音里听出情绪、重音、反讽、笑声和叹气。它的耳朵是我们开源的语音决策模型 [DuplexJev](https://github.com/adventists-ai/duplexjev/blob/main/README_CN.md)。
 - **NVV-SuperBench 中文 0.74、英文 0.68：说得出语气。** 无表达能力的基线只有 0.37 / 0.27。回答时什么时候笑、什么时候叹气、嗓子干了要不要清一清，由模型根据对话自己决定。
 - **约 0.4 秒开口：快。** 你说话的全程它都在听，回复边听边起草；你插话，它马上停下，回答你的新问题。
 - **Full-Duplex-Bench v3 工具调用 Pass@1 48%，高于 Grok（43%）；接话成功率 100%：能干活。** 支持 Live 模式，可以和后端大模型联合工作；兼容 OpenAI GPT-Live 的接口格式。每句回答都有文字记录，可以审计。
@@ -66,7 +66,7 @@
 
 ## 同一团队的其他项目
 
-- **[DuplexJev](https://github.com/adventists-ai/duplexjev)**：语音大模型一次前向，回答语音智能体需要的所有判断（说完没有、要不要打断、情绪、重音），92 毫秒。
+- **[DuplexJev](https://github.com/adventists-ai/duplexjev/blob/main/README_CN.md)**：语音大模型一次前向，回答语音智能体需要的所有判断（说完没有、要不要打断、情绪、重音），92 毫秒。
 
 ## 许可证
 
