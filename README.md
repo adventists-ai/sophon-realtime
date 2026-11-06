@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/banner_dark.svg">
-    <img src="docs/assets/banner_light.svg" alt="Sophon-Realtime — hears your tone, speaks with one. Open source on Nov 9, 2026" width="880">
-  </picture>
+  <img src="docs/assets/banner_v1.png" alt="Sophon-Realtime v1: hears your tone, speaks with one" width="880">
 </p>
 
 <p align="center">
@@ -12,7 +9,7 @@
 <h1 align="center">Hears your tone. Speaks with one.</h1>
 
 <p align="center">
-  <b>Sophon-Realtime is an open full-duplex voice model family: it listens while you talk, hears <i>how</i> you say things, and answers with a voice that carries tone of its own.</b>
+  <b>Sophon-Realtime v1 is an open full-duplex voice model: it listens while you talk, hears <i>how</i> you say things, and answers with a voice that carries tone of its own.</b>
 </p>
 
 <p align="center">
@@ -29,46 +26,41 @@
 > **🚀 Coming soon.** Weights, code and docs go live on **November 9, 2026 at 10:00 Beijing time** (13:00 Melbourne · Nov 8, 18:00 San Francisco).
 > ⭐ **Star** this repo, or **Watch → Custom → Releases**, to be notified the moment it's out.
 
-## What it is
+## Highlights
 
-Most voice agents turn your speech into text and lose everything else: the hesitation, the stress on one word, the laugh, the sigh. Sophon-Realtime keeps the audio in the loop, in both directions.
-
-- **🎭 It has a human touch.** It hears emotion, emphasis, laughter and sighs straight from your voice, and it talks back with tone of its own: laughing, sighing, stressing the word that matters.
-- **⚡ It's fast.** It listens the whole time you talk. Its voice starts about **0.3 s** into your pause, and you can cut in whenever you like.
-- **🛠️ It gets work done.** Text and voice stream together, with the text half a step ahead. Every reply is a transcript you can audit, log and route to tools or a larger backend model.
-- **🏠 You can run it yourself.** Apache-2.0 code and weights, serving on vLLM-Omni on your own GPU, and room to fine-tune for your product.
-
-## Early numbers (preview builds)
-
-| | |
-|---|---|
-| Voice starts after you stop talking | **≈ 0.3 s** |
-| VoiceBench (spoken QA and reasoning) | **82.8**, #1 among full-duplex models |
-| Big Bench Audio (reasoning from speech, answered by voice) | **81.2%**, #1 among open-weights speech models |
-| Full-Duplex-Bench v3 (tool calls under real, disfluent speech) | **44.5%** Pass@1, ahead of Grok Voice Agent (43%) and Ultravox (41%) |
-| Paralinguistic understanding (emotion, stress, laughter, sighs) | **#1 overall** across 6 public benchmarks (48.6) |
-| Non-verbal sounds in speech (NVV-SuperBench: laugh, cough, sigh, breath) | **F1 0.68 / 0.74** (EN / ZH) for the Expressive model, vs 0.27 / 0.37 without tags |
+- **VoiceBench 82.8 and Big Bench Audio 81.8%: the strongest brain among open full-duplex models.** #1 among open full-duplex models on both; level with GPT-4o-mini-Audio on VoiceBench.
+- **Paralinguistic understanding 48.6, #1 overall: it hears your tone.** Ahead of Gemini 3.8 Flash (46.9) and Qwen3-Omni (44.6) on LISTEN, StressTest and MSPB. It hears emotion, emphasis, sarcasm, laughter and sighs straight from your voice.
+- **NVV-SuperBench 0.74 (Chinese) and 0.68 (English): it speaks with tone.** The baseline without expression scores 0.37 / 0.27. The model decides from the conversation when to laugh, when to sigh, and when to clear a dry throat.
+- **Starts talking about 0.4 s after you stop: it's fast.** It listens the whole time you talk and drafts its reply as you go. When you cut in, it stops and answers your new question.
+- **Full-Duplex-Bench v3 tool calling: Pass@1 48%, ahead of Grok (43%), with a 100% response rate: it gets work done.** Live mode lets it work together with a larger backend model, and it is compatible with the OpenAI GPT-Live interface format. Every reply comes with an auditable transcript.
+- **Runs on a single GPU: yours to deploy.** A quantized build runs on a single consumer GPU. Apache-2.0 code and weights, free for commercial use.
 
 <p align="center">
   <img src="docs/assets/bench/voicebench_en.png" width="49%" alt="VoiceBench overall, full-duplex models">
-  <img src="docs/assets/bench/bba_en.png" width="49%" alt="Big Bench Audio, open-weights speech models">
+  <img src="docs/assets/bench/bba_en.png" width="49%" alt="Big Bench Audio">
 </p>
 <p align="center">
   <img src="docs/assets/bench/fdb3_en.png" width="49%" alt="Full-Duplex-Bench v3 tool use, Pass@1">
-  <img src="docs/assets/bench/paraling_en.png" width="49%" alt="Paralinguistic understanding, 6 public benchmarks combined">
+  <img src="docs/assets/bench/paraling_en.png" width="49%" alt="Paralinguistic understanding, public benchmarks combined">
 </p>
 <p align="center">
-  <img src="docs/assets/bench/nvv_en.png" width="98%" alt="NVV-SuperBench, non-verbal sounds, Expressive vs Base">
+  <img src="docs/assets/bench/nvv_en.png" width="98%" alt="NVV-SuperBench, non-verbal sounds in speech">
 </p>
 
-<sub>Self-run unless noted. VoiceBench: AlpacaEval on the standard 199-question subset. Big Bench Audio: GPT-4.1 judges the transcript of the spoken answer; other models from Artificial Analysis. Full-Duplex-Bench v3: single model, mean of 2 runs; other systems from the FDB v3 paper (Apr 2026). Paralinguistic understanding: same prompts and option rotation for every model. NVV-SuperBench: official prompts and metric, 50 items per class per language, Gemini 3 Flash judge for both models.</sub>
+<sub>Self-run unless noted. VoiceBench: official evaluators with a gpt-4o-mini judge; AlpacaEval on the standard 199-question subset. Big Bench Audio: GPT-4.1 judges the transcript of the spoken answer; other models from Artificial Analysis. Full-Duplex-Bench v3: best of several runs; other systems from the FDB v3 paper (Apr 2026). Paralinguistic understanding: same prompts and option rotation for every model. NVV-SuperBench: official prompts and metric, 50 items per class per language, Gemini 3 Flash judge.</sub>
 
-More expressive-speech benchmarks (style control, speech-to-speech arenas) and the full model lineup are published on release day.
+## How it works
+
+- **A vector language hidden inside the model.** We found that the stream of continuous vectors a speech LLM builds while it listens is a complete language in its own right. A frozen LLM reads it as easily as text, and it carries both what was said and how it was said: intonation, emphasis and emotion. Sophon-Realtime v1's voice writes this vector language directly, then turns it back into sound. Hearing and speaking share one representation, so the tone the model can hear is the tone it can speak.
+- **Listens continuously.** At each pause, the same model decides in a single token whether you've finished, are still talking, are back-channeling or are thinking.
+- **Drafts early, speaks on time.** A reply is drafted from your first pause and released the moment the model decides it's its turn. If you keep talking, the draft is dropped before you hear it.
+- **Remembers what you actually heard.** History keeps the real audio of both sides. When you interrupt, only the part you heard is kept.
 
 ## Arriving on November 9
 
-- 🧠 Open weights on Hugging Face and ModelScope
-- 📦 `pip install` package with a vLLM-Omni plugin: one command to serve
+- 🧠 Open weights for **Sophon-Realtime v1** on Hugging Face and ModelScope, plus two interim teacher models from its training
+- 📦 `pip install` package: one command to serve on a single GPU
+- 🔌 Live mode with a backend model, compatible with the OpenAI GPT-Live interface format
 - 🎧 Browser demo: talk to it with your microphone
 - 📖 Docs: quick start, deployment, fine-tuning
 
