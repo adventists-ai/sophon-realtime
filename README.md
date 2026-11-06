@@ -43,10 +43,23 @@ Most voice agents turn your speech into text and lose everything else: the hesit
 | | |
 |---|---|
 | Voice starts after you stop talking | **≈ 0.3 s** |
-| VoiceBench (spoken QA and reasoning) | **82.8** |
-| Paralinguistic understanding (emotion, stress, laughter, sighs) | **#1 overall** on the open [DuplexJev](https://github.com/adventists-ai/duplexjev) benchmarks |
+| VoiceBench (spoken QA and reasoning) | **82.8**, #1 among full-duplex models |
+| Big Bench Audio (reasoning from speech, answered by voice) | **81.2%**, #1 among open-weights speech models |
+| Full-Duplex-Bench v3 (tool calls under real, disfluent speech) | **44.5%** Pass@1, ahead of Grok Voice Agent (43%) and Ultravox (41%) |
+| Paralinguistic understanding (emotion, stress, laughter, sighs) | **#1 overall** across 6 public benchmarks (48.6) |
 
-The full model lineup, benchmark tables and audio demos are published on release day.
+<p align="center">
+  <img src="docs/assets/bench/voicebench_en.png" width="49%" alt="VoiceBench overall, full-duplex models">
+  <img src="docs/assets/bench/bba_en.png" width="49%" alt="Big Bench Audio, open-weights speech models">
+</p>
+<p align="center">
+  <img src="docs/assets/bench/fdb3_en.png" width="49%" alt="Full-Duplex-Bench v3 tool use, Pass@1">
+  <img src="docs/assets/bench/paraling_en.png" width="49%" alt="Paralinguistic understanding, 6 public benchmarks combined">
+</p>
+
+<sub>Self-run unless noted. VoiceBench: AlpacaEval on the standard 199-question subset. Big Bench Audio: GPT-4.1 judges the transcript of the spoken answer; other models from Artificial Analysis. Full-Duplex-Bench v3: single model, mean of 2 runs; other systems from the FDB v3 paper (Apr 2026). Paralinguistic understanding: same prompts and option rotation for every model.</sub>
+
+Expressive-speech benchmarks (laughter, sighs, style control) and the full model lineup are published on release day.
 
 ## Arriving on November 9
 

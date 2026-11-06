@@ -43,10 +43,23 @@
 | | |
 |---|---|
 | 你说完到它开口 | **约 0.3 秒** |
-| VoiceBench（语音问答与推理） | **82.8** |
-| 副语言理解（情绪、重音、笑声、叹气） | 公开 [DuplexJev](https://github.com/adventists-ai/duplexjev) 基准**综合第一** |
+| VoiceBench（语音问答与推理） | **82.8**，全双工模型第一 |
+| Big Bench Audio（听语音题、用语音作答的推理） | **81.2%**，开放权重语音模型第一 |
+| Full-Duplex-Bench v3（真人不流利语音下调用工具） | Pass@1 **44.5%**，高于 Grok Voice Agent（43%）和 Ultravox（41%） |
+| 副语言理解（情绪、重音、笑声、叹气） | 6 个公开基准**综合第一**（48.6） |
 
-完整的模型列表、评测表格和音频演示在发布当天公布。
+<p align="center">
+  <img src="docs/assets/bench/voicebench_zh.png" width="49%" alt="VoiceBench 总分（全双工模型）">
+  <img src="docs/assets/bench/bba_zh.png" width="49%" alt="Big Bench Audio（开放权重语音模型）">
+</p>
+<p align="center">
+  <img src="docs/assets/bench/fdb3_zh.png" width="49%" alt="Full-Duplex-Bench v3 工具调用 Pass@1">
+  <img src="docs/assets/bench/paraling_zh.png" width="49%" alt="副语言理解（6 个公开基准合计）">
+</p>
+
+<sub>除注明外均为自测。VoiceBench 的 AlpacaEval 用 199 题标准子集；Big Bench Audio 由 GPT-4.1 判语音回答的转写，其他模型数据来自 Artificial Analysis；Full-Duplex-Bench v3 为单模型、两次平均，其他系统来自 FDB v3 论文（2026 年 4 月）；副语言理解所有模型同题同口径。</sub>
+
+副语言表达评测（笑、叹气、风格控制）和完整模型列表在发布当天公布。
 
 ## 11 月 9 日上线
 
