@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/banner_v1.png" alt="Sophon-Realtime v1: hears your tone, speaks with one" width="880">
+  <img src="docs/assets/banner_v1_en.png" alt="Sophon-Realtime v1: hears your tone, speaks with one" width="880">
 </p>
 
 <p align="center">
@@ -72,4 +72,4 @@
 
 [Apache-2.0](LICENSE) for code and weights.
 
-<p align="center"><sub>Sophon series · by <a href="https://github.com/adventists-ai">Adventists AI (AI降临派)</a></sub></p>
+<p align="center"><sub>Sophon series · by <a href="https://github.com/adventists-ai">Adventists AI</a></sub></p>

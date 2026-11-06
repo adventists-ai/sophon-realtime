@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/banner_v1.png" alt="Sophon-Realtime v1：听得懂语气，也说得出语气" width="880">
+  <img src="docs/assets/banner_v1_zh.png" alt="Sophon-Realtime v1：听得懂语气，也说得出语气" width="880">
 </p>
 
 <p align="center">
