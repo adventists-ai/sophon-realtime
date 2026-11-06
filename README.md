@@ -47,6 +47,7 @@ Most voice agents turn your speech into text and lose everything else: the hesit
 | Big Bench Audio (reasoning from speech, answered by voice) | **81.2%**, #1 among open-weights speech models |
 | Full-Duplex-Bench v3 (tool calls under real, disfluent speech) | **44.5%** Pass@1, ahead of Grok Voice Agent (43%) and Ultravox (41%) |
 | Paralinguistic understanding (emotion, stress, laughter, sighs) | **#1 overall** across 6 public benchmarks (48.6) |
+| Non-verbal sounds in speech (NVV-SuperBench: laugh, cough, sigh, breath) | **F1 0.68 / 0.74** (EN / ZH) for the Expressive model, vs 0.27 / 0.37 without tags |
 
 <p align="center">
   <img src="docs/assets/bench/voicebench_en.png" width="49%" alt="VoiceBench overall, full-duplex models">
@@ -56,10 +57,13 @@ Most voice agents turn your speech into text and lose everything else: the hesit
   <img src="docs/assets/bench/fdb3_en.png" width="49%" alt="Full-Duplex-Bench v3 tool use, Pass@1">
   <img src="docs/assets/bench/paraling_en.png" width="49%" alt="Paralinguistic understanding, 6 public benchmarks combined">
 </p>
+<p align="center">
+  <img src="docs/assets/bench/nvv_en.png" width="98%" alt="NVV-SuperBench, non-verbal sounds, Expressive vs Base">
+</p>
 
-<sub>Self-run unless noted. VoiceBench: AlpacaEval on the standard 199-question subset. Big Bench Audio: GPT-4.1 judges the transcript of the spoken answer; other models from Artificial Analysis. Full-Duplex-Bench v3: single model, mean of 2 runs; other systems from the FDB v3 paper (Apr 2026). Paralinguistic understanding: same prompts and option rotation for every model.</sub>
+<sub>Self-run unless noted. VoiceBench: AlpacaEval on the standard 199-question subset. Big Bench Audio: GPT-4.1 judges the transcript of the spoken answer; other models from Artificial Analysis. Full-Duplex-Bench v3: single model, mean of 2 runs; other systems from the FDB v3 paper (Apr 2026). Paralinguistic understanding: same prompts and option rotation for every model. NVV-SuperBench: official prompts and metric, 50 items per class per language, Gemini 3 Flash judge for both models.</sub>
 
-Expressive-speech benchmarks (laughter, sighs, style control) and the full model lineup are published on release day.
+More expressive-speech benchmarks (style control, speech-to-speech arenas) and the full model lineup are published on release day.
 
 ## Arriving on November 9
 

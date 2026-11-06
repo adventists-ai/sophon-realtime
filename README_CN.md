@@ -47,6 +47,7 @@
 | Big Bench Audio（听语音题、用语音作答的推理） | **81.2%**，开放权重语音模型第一 |
 | Full-Duplex-Bench v3（真人不流利语音下调用工具） | Pass@1 **44.5%**，高于 Grok Voice Agent（43%）和 Ultravox（41%） |
 | 副语言理解（情绪、重音、笑声、叹气） | 6 个公开基准**综合第一**（48.6） |
+| 语音里的非语言声音（NVV-SuperBench：笑、咳嗽、叹气、呼吸） | Expressive 版 F1 **0.68 / 0.74**（英 / 中），不带标签时为 0.27 / 0.37 |
 
 <p align="center">
   <img src="docs/assets/bench/voicebench_zh.png" width="49%" alt="VoiceBench 总分（全双工模型）">
@@ -56,10 +57,13 @@
   <img src="docs/assets/bench/fdb3_zh.png" width="49%" alt="Full-Duplex-Bench v3 工具调用 Pass@1">
   <img src="docs/assets/bench/paraling_zh.png" width="49%" alt="副语言理解（6 个公开基准合计）">
 </p>
+<p align="center">
+  <img src="docs/assets/bench/nvv_zh.png" width="98%" alt="NVV-SuperBench 非语言声音：Expressive 对比 Base">
+</p>
 
-<sub>除注明外均为自测。VoiceBench 的 AlpacaEval 用 199 题标准子集；Big Bench Audio 由 GPT-4.1 判语音回答的转写，其他模型数据来自 Artificial Analysis；Full-Duplex-Bench v3 为单模型、两次平均，其他系统来自 FDB v3 论文（2026 年 4 月）；副语言理解所有模型同题同口径。</sub>
+<sub>除注明外均为自测。VoiceBench 的 AlpacaEval 用 199 题标准子集；Big Bench Audio 由 GPT-4.1 判语音回答的转写，其他模型数据来自 Artificial Analysis；Full-Duplex-Bench v3 为单模型、两次平均，其他系统来自 FDB v3 论文（2026 年 4 月）；副语言理解所有模型同题同口径；NVV-SuperBench 用官方题目与指标，每语种每类 50 条，两个模型裁判统一为 Gemini 3 Flash。</sub>
 
-副语言表达评测（笑、叹气、风格控制）和完整模型列表在发布当天公布。
+更多副语言表达评测（风格控制、语音对语音竞技场）和完整模型列表在发布当天公布。
 
 ## 11 月 9 日上线
 
