@@ -19,7 +19,7 @@
 
 <p align="center">
   <a href="https://huggingface.co/adventists-ai/Sophon-Realtime-v1"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-coming%20Nov%209-yellow" alt="Hugging Face: coming Nov 9"></a>
-  <img src="https://img.shields.io/badge/ModelScope-coming%20Nov%209-624aff" alt="ModelScope: coming Nov 9">
+  <a href="https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-v1"><img src="https://img.shields.io/badge/ModelScope-coming%20Nov%209-624aff" alt="ModelScope: coming Nov 9"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
 </p>
 
