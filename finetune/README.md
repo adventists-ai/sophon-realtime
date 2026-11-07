@@ -41,7 +41,7 @@ Use the standard ms-swift jsonl format, one conversation per line. Write `<audio
 ], "audios": ["data/0002.wav"]}
 ```
 
-- **End the system prompt with the sound-tag sentence:** "When it fits, you may use sound tags for laughter, coughs and emphasis." In Chinese: 「需要时可以用声音标签表现笑声、咳嗽和重读。」 The tag LoRA was trained with it, and without it the model writes fewer tags. Serve with the same prompt you train with.
+- **End the system prompt with the sound-tag sentence:** "When it fits, you may use sound tags for laughter, coughs and emphasis." (For the Chinese sentence, see the [Chinese guide](README_CN.md).) The tag LoRA was trained with it, and without it the model writes fewer tags. Serve with the same prompt you train with.
 - **Write replies as speech:** one or two conversational sentences; no stage directions, emoji or markdown; numbers written the way they are read. Add `[laughter]`, `[cough]`, `[sigh]`, `[breath]` or `<strong>word</strong>` where they fit naturally.
 - **Multi-turn:** every user turn can be `<audio>`. Assistant history can be text, or the audio it actually spoke (`<audio>`). Assistant audio is context only and is never trained on.
 - **Tools:** use the Qwen format. Put the function schemas in `tools`, write calls as `<tool_call>{...}</tool_call>` in the assistant reply, and return results with `role: tool`.
