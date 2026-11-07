@@ -30,7 +30,7 @@ def load(path, n):
         msgs = r["messages"]
         if msgs and msgs[-1]["role"] == "assistant":
             msgs = msgs[:-1]
-        auds = [a if os.path.isabs(a) else os.path.join(base, a) for a in r.get("audios", [])]
+        auds = [a if os.path.isabs(a) or os.path.exists(a) else os.path.join(base, a) for a in r.get("audios", [])]
         rows.append((msgs, auds))
     return rows[:n] if n else rows
 

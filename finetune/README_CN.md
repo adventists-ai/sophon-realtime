@@ -52,6 +52,16 @@ python -m sophon_swift.adapters to-swift Sophon-Realtime-v1/adapters/tag tag_swi
 
 示例见 [examples/data_example.jsonl](examples/data_example.jsonl)（音频路径换成你自己的文件）。
 
+**保留声音标签：混入回放数据。** 如果你自己的回复里很少带标签，微调后模型写标签也会变少。可以混入我们的[写标签回放数据](https://www.modelscope.cn/datasets/AdventistsAI/Sophon-Realtime-tag-replay)（8,797 条合成对话，约三分之一带标签）一起训：
+
+```bash
+modelscope download --dataset AdventistsAI/Sophon-Realtime-tag-replay --local_dir tag_replay
+# 和你的数据一起放进 --dataset，数量取你数据的 20%–30% 左右，例如：
+#   --dataset my_data.jsonl 'tag_replay/train.jsonl#2000'
+```
+
+其中的 `eval.jsonl`（150 条留出对话）可以直接用来做下面的回归检查。
+
 ## 4. 训练
 
 一张 80 GB 显卡即可：

@@ -48,6 +48,16 @@ Use the standard ms-swift jsonl format, one conversation per line. Write `<audio
 
 See [examples/data_example.jsonl](examples/data_example.jsonl) (replace the audio paths with your own files).
 
+**Keep the sound tags: mix in replay data.** If your own replies rarely contain tags, the fine-tuned model will write fewer of them. Mix in a sample of our [tag replay data](https://www.modelscope.cn/datasets/AdventistsAI/Sophon-Realtime-tag-replay) (8,797 synthetic conversations, about 1/3 tagged):
+
+```bash
+modelscope download --dataset AdventistsAI/Sophon-Realtime-tag-replay --local_dir tag_replay
+# then add it next to your data, e.g. 20-30% of your sample count:
+#   --dataset my_data.jsonl 'tag_replay/train.jsonl#2000'
+```
+
+Its `eval.jsonl` (150 held-out conversations) works directly with the regression check below.
+
 ## 4. Train
 
 One 80 GB GPU is enough:
