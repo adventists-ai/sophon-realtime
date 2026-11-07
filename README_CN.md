@@ -64,6 +64,10 @@
 - 🎧 网页 Demo：打开麦克风就能对话
 - 📖 文档：快速上手、部署、微调
 
+## 微调
+
+用 [ms-swift](https://github.com/modelscope/ms-swift) 给思考器训练 LoRA，可以改人设、口吻、领域知识和工具调用习惯，一张 80G 显卡即可。声音、笑声和咳嗽等声音标签、接话判断都保持不变。说明见 [finetune/](finetune/README_CN.md)。
+
 ## 同一团队的其他项目
 
 - **[DuplexJev](https://github.com/adventists-ai/duplexjev/blob/main/README_CN.md)**：语音大模型一次前向，回答语音智能体需要的所有判断（说完没有、要不要打断、情绪、重音），92 毫秒。

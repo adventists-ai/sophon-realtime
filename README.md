@@ -64,6 +64,10 @@
 - 🎧 Browser demo: talk to it with your microphone
 - 📖 Docs: quick start, deployment, fine-tuning
 
+## Fine-tuning
+
+Adapt the thinker (persona, tone, domain knowledge, tool use) with LoRA in [ms-swift](https://github.com/modelscope/ms-swift) on one 80 GB GPU. The voice, expressive sound tags and turn-taking are kept. See [finetune/](finetune/README.md).
+
 ## From the same team
 
 - **[DuplexJev](https://github.com/adventists-ai/duplexjev)**: one forward pass of a speech LLM answers every decision a voice agent needs (turn end, interruption, emotion, stress), in 92 ms.
