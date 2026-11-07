@@ -19,7 +19,7 @@
 
 <p align="center">
   <a href="https://huggingface.co/adventists-ai/Sophon-Realtime-v1"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-11%E6%9C%889%E6%97%A5%E4%B8%8A%E7%BA%BF-yellow" alt="Hugging Face：11 月 9 日上线"></a>
-  <img src="https://img.shields.io/badge/%E9%AD%94%E6%90%AD-11%E6%9C%889%E6%97%A5%E4%B8%8A%E7%BA%BF-624aff" alt="魔搭：11 月 9 日上线">
+  <a href="https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-v1"><img src="https://img.shields.io/badge/%E9%AD%94%E6%90%AD-11%E6%9C%889%E6%97%A5%E4%B8%8A%E7%BA%BF-624aff" alt="魔搭：11 月 9 日上线"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
 </p>
 
