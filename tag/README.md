@@ -25,7 +25,7 @@ bash stop.sh
 
 - Mirror in mainland China: `PIP_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple bash install.sh`.
 - Weights already downloaded: `SKIP_DOWNLOAD=1 bash install.sh`, then `MODEL_DIR=/path/to/Sophon-Realtime-32B-Tag bash start.sh`.
-- Voices: `vivian_zh` (default for Chinese), `ryan_en` (default for English), `brand_zh`, `brand_en`.
+- Voices: `chelsie` (default; `chelsie_zh` / `chelsie_en` picked by language), `vivian_zh`, `ryan_en`, `brand_zh`, `brand_en`.
 
 ## Performance (one H100 80 GB, measured)
 

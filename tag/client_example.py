@@ -1,5 +1,5 @@
 """Minimal client: send a WAV (default: examples/hello_zh.wav), stream back text + audio, save reply.wav.
-usage: python client_example.py [--url http://127.0.0.1:8000] [--wav my.wav] [--lang zh|en] [--voice vivian_zh|brand_zh|brand_en|ryan_en]"""
+usage: python client_example.py [--url http://127.0.0.1:8000] [--wav my.wav] [--lang zh|en] [--voice chelsie|vivian_zh|brand_zh|brand_en|ryan_en]"""
 import argparse, base64, io, json, os, time, urllib.request
 import numpy as np, soundfile as sf
 HERE = os.path.dirname(os.path.abspath(__file__))

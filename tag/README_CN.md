@@ -23,7 +23,7 @@ bash stop.sh
 
 - 国内镜像：`PIP_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple bash install.sh`。
 - 已经下好权重：`SKIP_DOWNLOAD=1 bash install.sh`，启动时 `MODEL_DIR=/权重目录 bash start.sh`。
-- 音色：`vivian_zh`（中文默认）、`ryan_en`（英文默认）、`brand_zh`、`brand_en`。
+- 音色：`chelsie`（默认，按语言自动选 `chelsie_zh` / `chelsie_en`）、`vivian_zh`、`ryan_en`、`brand_zh`、`brand_en`。
 
 ## 性能（单张 H100 80 GB 实测）
 

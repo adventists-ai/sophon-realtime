@@ -165,7 +165,7 @@ def _voice_payload(request):
     lang = str(first(info.get("language")) or "zh").lower()[:2]
     from .env import model_dir
     vdir = os.environ.get("SOPHON_VOICES") or os.path.join(model_dir(), "voices")
-    for n in (name, f"{name}_{lang}", "vivian_zh" if lang == "zh" else "ryan_en", "vivian_zh"):
+    for n in (name, f"{name}_{lang}", f"chelsie_{lang}", "vivian_zh" if lang == "zh" else "ryan_en", "vivian_zh"):
         if not n:
             continue
         if n not in _VOICES and os.path.exists(os.path.join(vdir, f"{n}.pt")):

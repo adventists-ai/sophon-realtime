@@ -173,7 +173,7 @@ class SophonTagTalker(CosyVoice3Model):
     # ------------------------------------------------------------------ helpers
     def _voice(self, name: str | None, lang: str) -> dict:
         name = (name or "").lower().strip()
-        cands = [name, f"{name}_{lang}", "vivian_zh" if lang == "zh" else "ryan_en", "vivian_zh"]
+        cands = [name, f"{name}_{lang}", f"chelsie_{lang}", "vivian_zh" if lang == "zh" else "ryan_en", "vivian_zh"]
         for n in cands:
             if not n:
                 continue
