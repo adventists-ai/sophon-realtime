@@ -58,7 +58,7 @@
 
 ## Arriving on November 9
 
-- 🧠 Open weights for **Sophon-Realtime v1** on Hugging Face and ModelScope, plus two interim teacher models from its training
+- 🧠 Open weights for **Sophon-Realtime v1** on Hugging Face and ModelScope
 - 📦 `pip install` package: one command to serve on a single GPU
 - 🔌 Live mode with a backend model, compatible with the OpenAI GPT-Live interface format
 - 🎧 Browser demo: talk to it with your microphone
