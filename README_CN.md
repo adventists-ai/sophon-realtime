@@ -75,6 +75,20 @@ SOPHON_MODEL_DIR=$PWD/Sophon-Realtime-v1 THINKER_GPU=0 TALKER_GPU=1 bash scripts
 
 环境要求、WebSocket 接口和限制见 [docs/deploy_CN.md](docs/deploy_CN.md)。
 
+**Tag 版：单张 80G 显卡、一条命令（vLLM-Omni）。** 思考器写声音标签，流式 tag-tts 把它们演出来。单张 H100 实测**每卡 16 路并发**、首包约 0.75 秒；全双工下用户说完约 0.7 秒开口。
+
+```bash
+cd tag && bash install.sh && GPU=0 PORT=8000 bash start.sh
+```
+
+| 并发（单张 H100） | 首包 中位 / 最慢 |
+|---|---|
+| 1 路 | 0.67 秒 |
+| 8 路 | 0.61 / 0.76 秒 |
+| 16 路 | 0.75 / 1.07 秒 |
+
+接口、多卡部署等说明见 [tag/README_CN.md](tag/README_CN.md)。
+
 ## 微调
 
 用 [ms-swift](https://github.com/modelscope/ms-swift) 给思考器训练 LoRA，可以改人设、口吻、领域知识和工具调用习惯，一张 80G 显卡即可。声音、笑声和咳嗽等声音标签、接话判断都保持不变。说明见 [finetune/](finetune/README_CN.md)。

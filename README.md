@@ -75,6 +75,20 @@ SOPHON_MODEL_DIR=$PWD/Sophon-Realtime-v1 THINKER_GPU=0 TALKER_GPU=1 bash scripts
 
 See [docs/deploy.md](docs/deploy.md) for requirements, the WebSocket API and limits.
 
+**Tag build: one 80 GB GPU, one command (vLLM-Omni).** The thinker writes sound tags and a streaming tag-tts voice performs them. Up to **16 concurrent users per GPU** at ~0.75 s first audio (one H100, measured); full duplex answers ~0.7 s after you stop.
+
+```bash
+cd tag && bash install.sh && GPU=0 PORT=8000 bash start.sh
+```
+
+| Concurrent users (one H100) | First audio, median / max |
+|---|---|
+| 1 | 0.67 s |
+| 8 | 0.61 / 0.76 s |
+| 16 | 0.75 / 1.07 s |
+
+See [tag/README.md](tag/README.md) for the APIs, multi-GPU setup and details.
+
 ## Fine-tuning
 
 Adapt the thinker (persona, tone, domain knowledge, tool use) with LoRA in [ms-swift](https://github.com/modelscope/ms-swift) on one 80 GB GPU. The voice, expressive sound tags and turn-taking are kept. See [finetune/](finetune/README.md).
