@@ -58,7 +58,7 @@
 
 ## 11 月 9 日上线
 
-- 🧠 **Sophon-Realtime v1** 开放权重（Hugging Face、魔搭），以及训练过程中的两个阶段性老师模型
+- 🧠 **Sophon-Realtime v1** 开放权重（Hugging Face、魔搭）
 - 📦 `pip install` 一行安装，单张显卡一条命令启动服务
 - 🔌 Live 模式接后端大模型，兼容 OpenAI GPT-Live 接口格式
 - 🎧 网页 Demo：打开麦克风就能对话
