@@ -26,7 +26,6 @@ bash scripts/install.sh          # two virtual environments + model download (Mo
 
 - In mainland China, add a PyPI mirror: `PIP_INDEX_URL=https://mirrors.cloud.tencent.com/pypi/simple bash scripts/install.sh`.
 - Already downloaded the model? `SKIP_DOWNLOAD=1 MODEL_DIR=/path/to/Sophon-Realtime-v1 bash scripts/install.sh`.
-- The thinker must run on **vLLM 0.29**. vLLM 0.30 changes how often a half-finished sentence is judged as finished.
 
 ## Start
 

@@ -26,7 +26,6 @@ bash scripts/install.sh          # 建两个虚拟环境，并从魔搭下载模
 
 - 国内可以加 PyPI 镜像：`PIP_INDEX_URL=https://mirrors.cloud.tencent.com/pypi/simple bash scripts/install.sh`。
 - 已经下载好模型的话：`SKIP_DOWNLOAD=1 MODEL_DIR=/path/to/Sophon-Realtime-v1 bash scripts/install.sh`。
-- 思考器必须用 **vLLM 0.29**。在 vLLM 0.30 上，没说完的半句话更容易被判成"说完了"。
 
 ## 启动
 

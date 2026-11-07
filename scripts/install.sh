@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install Sophon-Realtime v1 (Expressive) into two virtual environments next to this repository:
-#   .venv-thinker  vLLM 0.29 + duplexjev-vllm   (the thinker; use vLLM 0.29 - 0.30 changes turn-taking behaviour)
+#   .venv-thinker  vLLM 0.29 + duplexjev-vllm   (the thinker)
 #   .venv-engine   speaking engine + gateway
 # and download the model to MODEL_DIR (default ./Sophon-Realtime-v1).
 # Uses uv when it is installed, otherwise python -m venv + pip. A PyPI mirror can be set with PIP_INDEX_URL.
