@@ -105,7 +105,11 @@ CUDA_VISIBLE_DEVICES=0 swift infer \
 python -m sophon_swift.adapters to-vllm output/vx-xxx/checkpoint-yyy my_lora
 ```
 
-部署时，用 `my_lora` **替换** `Sophon-Realtime-v1/adapters/tag`（或在部署配置里把写回复用的 LoRA 指向它），其余部署步骤不变。
+部署时用它代替自带的写标签 LoRA（部署方法见[部署说明](../docs/deploy_CN.md)）：
+
+```bash
+SOPHON_MODEL_DIR=$PWD/Sophon-Realtime-v1 SOPHON_REPLY_LORA=$PWD/my_lora bash ../scripts/start.sh
+```
 
 - **不要合并 LoRA**（不要用 `swift export --merge_lora`）。思考器和说话头共用同一份底座，合并会改动说话头的输入，也会多占一份 32B 显存。
 - 服务一次只挂一个回复 LoRA。你的 LoRA 是在写标签 LoRA 的基础上训出来的，已经包含了写标签的能力。

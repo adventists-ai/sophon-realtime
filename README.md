@@ -64,6 +64,17 @@
 - 🎧 Browser demo: talk to it with your microphone
 - 📖 Docs: quick start, deployment, fine-tuning
 
+## Deploy
+
+The Expressive build (thinker + concurrent speaking engine + web demo) installs with one script and runs on two 80 GB GPUs:
+
+```bash
+bash scripts/install.sh
+SOPHON_MODEL_DIR=$PWD/Sophon-Realtime-v1 THINKER_GPU=0 TALKER_GPU=1 bash scripts/start.sh
+```
+
+See [docs/deploy.md](docs/deploy.md) for requirements, the WebSocket API and limits.
+
 ## Fine-tuning
 
 Adapt the thinker (persona, tone, domain knowledge, tool use) with LoRA in [ms-swift](https://github.com/modelscope/ms-swift) on one 80 GB GPU. The voice, expressive sound tags and turn-taking are kept. See [finetune/](finetune/README.md).

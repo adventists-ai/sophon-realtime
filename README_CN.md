@@ -64,6 +64,17 @@
 - 🎧 网页 Demo：打开麦克风就能对话
 - 📖 文档：快速上手、部署、微调
 
+## 部署
+
+Expressive 版（思考器 + 并发发声引擎 + 网页 demo）一个脚本安装，用两张 80G 显卡运行：
+
+```bash
+bash scripts/install.sh
+SOPHON_MODEL_DIR=$PWD/Sophon-Realtime-v1 THINKER_GPU=0 TALKER_GPU=1 bash scripts/start.sh
+```
+
+环境要求、WebSocket 接口和限制见 [docs/deploy_CN.md](docs/deploy_CN.md)。
+
 ## 微调
 
 用 [ms-swift](https://github.com/modelscope/ms-swift) 给思考器训练 LoRA，可以改人设、口吻、领域知识和工具调用习惯，一张 80G 显卡即可。声音、笑声和咳嗽等声音标签、接话判断都保持不变。说明见 [finetune/](finetune/README_CN.md)。

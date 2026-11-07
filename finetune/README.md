@@ -100,7 +100,11 @@ CUDA_VISIBLE_DEVICES=0 swift infer \
 python -m sophon_swift.adapters to-vllm output/vx-xxx/checkpoint-yyy my_lora
 ```
 
-**Replace** `Sophon-Realtime-v1/adapters/tag` with `my_lora`, or point the reply LoRA in your deployment config to it. Deploy as usual.
+Serve it in place of the bundled tag LoRA (see [deployment](../docs/deploy.md)):
+
+```bash
+SOPHON_MODEL_DIR=$PWD/Sophon-Realtime-v1 SOPHON_REPLY_LORA=$PWD/my_lora bash ../scripts/start.sh
+```
 
 - **Do not merge the LoRA** (no `swift export --merge_lora`). The thinker and the talker share one copy of the base weights. Merging would change what the talker reads and cost another 32B of memory.
 - The server attaches one reply LoRA per request. Yours already includes the tag-writing behaviour, because it was trained on top of the tag LoRA.
