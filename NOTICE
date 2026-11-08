@@ -10,5 +10,6 @@ See the NOTICE file of each build for details:
 Third-party code:
 - sophon_expressive/cosyvoice_lite/ and sophon_expressive/hift_abs.py include code adapted from CosyVoice
   (FunAudioLLM team, Alibaba; https://github.com/FunAudioLLM/CosyVoice; Apache License 2.0).
+- live/sophon_live/silero_vad.onnx is the Silero VAD model (Silero Team; https://github.com/snakers4/silero-vad; MIT License).
 - The tag/ and flash/ plugins run on vLLM and vLLM-Omni (Apache License 2.0), which are installed as dependencies and not
   redistributed here.
