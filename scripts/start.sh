@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Start Sophon-Realtime v1 (Expressive): thinker (vLLM) + speaking engine + gateway with the web demo.
-# usage: SOPHON_MODEL_DIR=/path/to/Sophon-Realtime-v1 [THINKER_GPU=0 TALKER_GPU=1 PORT=8000] bash scripts/start.sh
+# usage: SOPHON_MODEL_DIR=/path/to/Sophon-Realtime-32B-E2E [THINKER_GPU=0 TALKER_GPU=1 PORT=8000] bash scripts/start.sh
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")/.." && pwd)
-: "${SOPHON_MODEL_DIR:?set SOPHON_MODEL_DIR to the downloaded Sophon-Realtime-v1 directory}"
+: "${SOPHON_MODEL_DIR:?set SOPHON_MODEL_DIR to the downloaded Sophon-Realtime-32B-E2E directory}"
 THINKER_GPU=${THINKER_GPU:-0}; TALKER_GPU=${TALKER_GPU:-1}; PORT=${PORT:-8000}
 THINKER_PORT=${THINKER_PORT:-8300}; TALKER_PORT=${TALKER_PORT:-8120}
 THINKER_ENV=${THINKER_ENV:-$HERE/.venv-thinker}; ENGINE_ENV=${ENGINE_ENV:-$HERE/.venv-engine}

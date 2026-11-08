@@ -33,7 +33,7 @@
 | 每张 80 GB 卡建议并发 | 16 路 | **40 路** | 4–5 路（说话引擎） |
 | 显卡 | **1** × 80 GB | **1** × 80 GB | 2 × 80 GB |
 | 部署 | vLLM-Omni，一条命令 | vLLM-Omni，一条命令 | 自研引擎 |
-| 权重 | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) | 新版本测试中，稍后发布 |
+| 权重 | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) |
 | 代码 | [`tag/`](tag/README_CN.md) | [`flash/`](flash/README_CN.md) | [`docs/deploy_CN.md`](docs/deploy_CN.md) |
 
 **怎么选？** 想让声音"会演"，先用 **Tag**；最看重延迟和单卡能接多少人，用 **Flash**。两者接口相同，之后可以随时切换。
@@ -93,7 +93,16 @@ python client_example.py --wav my_question.wav --lang zh --voice chelsie
 
 ## E2E（预览）
 
-E2E 版不用单独的语音模型。32B 模型在听的时候会形成一串连续向量，里面既有说了什么，也有怎么说的；E2E 的说话头用同一种向量语言写出回复，再由解码器还原成声音，听和说用的是同一种表示。它需要两张 80 GB 显卡、使用我们的自研引擎（[docs/deploy_CN.md](docs/deploy_CN.md)）。新版本正在测试，准备好后权重会在这里发布。
+E2E 版不用单独的语音模型。32B 模型在听的时候会形成一串连续向量，里面既有说了什么，也有怎么说的；E2E 的说话头用同一种向量语言写出回复，再由解码器还原成声音，听和说用的是同一种表示。它需要两张 80 GB 显卡、使用我们的自研引擎（[docs/deploy_CN.md](docs/deploy_CN.md)）。权重：[魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E)。
+
+**新版（2026-11）：解码器换代，4 步出声。** 每块音频的计算量与旧版相同。同一说话头的回复上：
+
+| | 旧解码器 | 新解码器 |
+|---|---|---|
+| 长回复错字率（150 条，中 / 英 / 日） | 1.78%（1.03 / 1.32 / 2.99） | **1.51%（0.97 / 0.71 / 2.86）** |
+| 未见说话人参考音色的相似度 | 0.33 | **0.52** |
+
+旧版权重仍保留在 [Sophon-Realtime-v1](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-v1)。
 
 ## 微调
 

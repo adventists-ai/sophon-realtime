@@ -27,12 +27,12 @@ bash scripts/install.sh          # two virtual environments + model download (Mo
 ```
 
 - In mainland China, add a PyPI mirror: `PIP_INDEX_URL=https://mirrors.cloud.tencent.com/pypi/simple bash scripts/install.sh`.
-- Already downloaded the model? `SKIP_DOWNLOAD=1 MODEL_DIR=/path/to/Sophon-Realtime-v1 bash scripts/install.sh`.
+- Already downloaded the model? `SKIP_DOWNLOAD=1 MODEL_DIR=/path/to/Sophon-Realtime-32B-E2E bash scripts/install.sh`.
 
 ## Start
 
 ```bash
-SOPHON_MODEL_DIR=$PWD/Sophon-Realtime-v1 THINKER_GPU=0 TALKER_GPU=1 bash scripts/start.sh
+SOPHON_MODEL_DIR=$PWD/Sophon-Realtime-32B-E2E THINKER_GPU=0 TALKER_GPU=1 bash scripts/start.sh
 ```
 
 The first start takes 3–5 minutes (weights are loaded and the speaking engine captures its CUDA graphs). Then open `http://<server>:8000/` and talk. Use headphones so the model does not hear itself.

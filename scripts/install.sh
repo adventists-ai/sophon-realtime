@@ -2,13 +2,13 @@
 # Install Sophon-Realtime v1 (Expressive) into two virtual environments next to this repository:
 #   .venv-thinker  vLLM 0.29 + duplexjev-vllm   (the thinker)
 #   .venv-engine   speaking engine + gateway
-# and download the model to MODEL_DIR (default ./Sophon-Realtime-v1).
+# and download the model to MODEL_DIR (default ./Sophon-Realtime-32B-E2E).
 # Uses uv when it is installed, otherwise python -m venv + pip. A PyPI mirror can be set with PIP_INDEX_URL.
 # usage: [PYTHON=python3.10] [PIP_INDEX_URL=...] [SKIP_DOWNLOAD=1] bash scripts/install.sh
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")/.." && pwd); cd "$HERE"
 PY=${PYTHON:-python3}
-MODEL_DIR=${MODEL_DIR:-$HERE/Sophon-Realtime-v1}
+MODEL_DIR=${MODEL_DIR:-$HERE/Sophon-Realtime-32B-E2E}
 "$PY" -c 'import sys; assert sys.version_info >= (3, 10), "Python 3.10+ required"'
 [ -n "${PIP_INDEX_URL:-}" ] && export UV_INDEX_URL="$PIP_INDEX_URL"
 
@@ -30,7 +30,7 @@ pipi .venv-engine -c scripts/constraints-engine.txt -r requirements-engine.txt m
 
 echo "[3/3] model"
 if [ "${SKIP_DOWNLOAD:-0}" != "1" ]; then
-  .venv-engine/bin/modelscope download --model AdventistsAI/Sophon-Realtime-v1 --local_dir "$MODEL_DIR"
+  .venv-engine/bin/modelscope download --model AdventistsAI/Sophon-Realtime-32B-E2E --local_dir "$MODEL_DIR"
 fi
 echo
 echo "Done. Start with:"

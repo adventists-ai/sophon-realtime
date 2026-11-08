@@ -33,7 +33,7 @@ All three builds share the same brain: one 32B model that listens to your voice,
 | Users per 80 GB GPU (recommended) | 16 | **40** | 4–5 (speaking engine) |
 | GPUs | **1** × 80 GB | **1** × 80 GB | 2 × 80 GB |
 | Serving | vLLM-Omni, one command | vLLM-Omni, one command | own engine |
-| Weights | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) | new build in testing, coming soon |
+| Weights | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) |
 | Code | [`tag/`](tag/README.md) | [`flash/`](flash/README.md) | [`docs/deploy.md`](docs/deploy.md) |
 
 **Which one?** Start with **Tag** if you want the voice to act. Pick **Flash** if latency and the number of users per GPU matter most. Same APIs, so you can switch later.
@@ -93,7 +93,16 @@ Both serve `ws://HOST:PORT/v1/realtime` (full duplex, OpenAI-Realtime-style) and
 
 ## E2E (preview)
 
-The E2E build speaks without a separate speech model. While the 32B model listens, it builds a stream of continuous vectors that carries both what was said and how; the E2E talker writes replies in that same vector language and a decoder turns it into sound, so hearing and speaking share one representation. It runs on two 80 GB GPUs with our own engine ([docs/deploy.md](docs/deploy.md)). A new build is in testing; its weights will be published here when it is ready.
+The E2E build speaks without a separate speech model. While the 32B model listens, it builds a stream of continuous vectors that carries both what was said and how; the E2E talker writes replies in that same vector language and a decoder turns it into sound, so hearing and speaking share one representation. It runs on two 80 GB GPUs with our own engine ([docs/deploy.md](docs/deploy.md)). Weights: [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E).
+
+**New build (Nov 2026): upgraded decoder, 4 steps.** Same compute per audio chunk as before. On replies from the same talker:
+
+| | previous decoder | new decoder |
+|---|---|---|
+| Long replies, error rate (150 replies, zh / en / ja) | 1.78% (1.03 / 1.32 / 2.99) | **1.51% (0.97 / 0.71 / 2.86)** |
+| Voice similarity to an unseen reference speaker | 0.33 | **0.52** |
+
+The previous weights stay in [Sophon-Realtime-v1](https://huggingface.co/adventists-ai/Sophon-Realtime-v1).
 
 ## Fine-tuning
 

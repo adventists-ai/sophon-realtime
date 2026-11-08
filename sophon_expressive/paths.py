@@ -1,13 +1,13 @@
 # Copyright 2026 Adventists AI. Apache-2.0.
-"""Where the released files live. Set SOPHON_MODEL_DIR to the downloaded Sophon-Realtime-v1 directory."""
+"""Where the released files live. Set SOPHON_MODEL_DIR to the downloaded Sophon-Realtime-32B-E2E directory."""
 import os
 
 
 def model_dir() -> str:
     d = os.environ.get("SOPHON_MODEL_DIR", "")
     if not d or not os.path.isdir(d):
-        raise RuntimeError("Set SOPHON_MODEL_DIR to the Sophon-Realtime-v1 model directory "
-                           "(modelscope download --model AdventistsAI/Sophon-Realtime-v1 --local_dir ...)")
+        raise RuntimeError("Set SOPHON_MODEL_DIR to the Sophon-Realtime-32B-E2E model directory "
+                           "(modelscope download --model AdventistsAI/Sophon-Realtime-32B-E2E --local_dir ...)")
     return os.path.abspath(d)
 
 

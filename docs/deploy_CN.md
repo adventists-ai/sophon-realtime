@@ -27,12 +27,12 @@ bash scripts/install.sh          # 建两个虚拟环境，并从魔搭下载模
 ```
 
 - 国内可以加 PyPI 镜像：`PIP_INDEX_URL=https://mirrors.cloud.tencent.com/pypi/simple bash scripts/install.sh`。
-- 已经下载好模型的话：`SKIP_DOWNLOAD=1 MODEL_DIR=/path/to/Sophon-Realtime-v1 bash scripts/install.sh`。
+- 已经下载好模型的话：`SKIP_DOWNLOAD=1 MODEL_DIR=/path/to/Sophon-Realtime-32B-E2E bash scripts/install.sh`。
 
 ## 启动
 
 ```bash
-SOPHON_MODEL_DIR=$PWD/Sophon-Realtime-v1 THINKER_GPU=0 TALKER_GPU=1 bash scripts/start.sh
+SOPHON_MODEL_DIR=$PWD/Sophon-Realtime-32B-E2E THINKER_GPU=0 TALKER_GPU=1 bash scripts/start.sh
 ```
 
 第一次启动需要 3–5 分钟（加载权重，发声引擎捕获 CUDA graph）。启动后打开 `http://<服务器>:8000/` 就能直接对话。建议戴耳机，免得模型听到自己的声音。
