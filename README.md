@@ -70,6 +70,15 @@ All three builds share the same brain: one 32B model that listens to your voice,
 
 ## Quick start
 
+**Quickest** (Tag build, one 80 GB GPU):
+
+```bash
+pip install sophon-realtime     # Python 3.12, Linux, CUDA; installs vLLM-Omni and the Tag plugin
+sophon-realtime serve           # downloads Sophon-Realtime-32B-Tag (~42 GB) on first run, then serves on port 8000
+```
+
+Or use the one-command scripts, which set up an isolated environment:
+
 **Tag** (one 80 GB GPU):
 
 ```bash

@@ -70,6 +70,15 @@
 
 ## 快速上手
 
+**最快**（Tag 版，一张 80 GB 显卡）：
+
+```bash
+pip install sophon-realtime     # Python 3.12、Linux、CUDA；会装好 vLLM-Omni 和 Tag 插件
+sophon-realtime serve           # 首次运行自动下载 Sophon-Realtime-32B-Tag（约 42 GB），然后在 8000 端口提供服务
+```
+
+也可以用一键脚本，会建一个独立的虚拟环境：
+
 **Tag**（一张 80 GB 显卡）：
 
 ```bash
