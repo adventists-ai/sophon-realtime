@@ -1,0 +1,8 @@
+Copyright 2026 Adventists.ai.
+
+Sophon-Realtime-32B-Flash bundles model weights derived from the following works, each licensed under the Apache License 2.0:
+- thinker/: derived from Qwen3-VL-32B-Instruct by the Qwen team, Alibaba (https://huggingface.co/Qwen/Qwen3-VL-32B-Instruct),
+  via DuplexJev-32B-Para (Adventists.ai) with a merged tag-writing adapter; quantized to FP8. Its audio encoder is derived from
+  Qwen3-ASR (Qwen team, Alibaba, Apache License 2.0).
+- talker/: derived from Qwen3-TTS-12Hz-1.7B-Base by the Qwen team, Alibaba (https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-Base);
+  the language model was fine-tuned to perform sound tags. talker/speech_tokenizer/ is redistributed unchanged.

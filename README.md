@@ -9,31 +9,43 @@
 <h1 align="center">Hears your tone. Speaks with one.</h1>
 
 <p align="center">
-  <b>Sophon-Realtime v1 is an open full-duplex voice model: it listens while you talk, hears <i>how</i> you say things, and answers with a voice that carries tone of its own.</b>
+  <b>Sophon-Realtime v1 is an open full-duplex voice model family: it listens while you talk, hears <i>how</i> you say things, and answers with a voice that laughs, sighs and breathes when the moment calls for it.</b>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/%F0%9F%9A%80%20Open%20source-Nov%209%2C%202026-22D3A6?style=for-the-badge" alt="Open source on Nov 9, 2026">
-  <a href="https://github.com/adventists-ai/sophon-realtime/subscription"><img src="https://img.shields.io/badge/%F0%9F%94%94-Watch%20for%20release-181717?style=for-the-badge&logo=github" alt="Watch for release"></a>
-</p>
-
-<p align="center">
-  <a href="https://huggingface.co/adventists-ai/Sophon-Realtime-v1"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-coming%20Nov%209-yellow" alt="Hugging Face: coming Nov 9"></a>
-  <a href="https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-v1"><img src="https://img.shields.io/badge/ModelScope-coming%20Nov%209-624aff" alt="ModelScope: coming Nov 9"></a>
+  <a href="https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Tag-Hugging%20Face-yellow" alt="Tag on Hugging Face"></a>
+  <a href="https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Flash-Hugging%20Face-yellow" alt="Flash on Hugging Face"></a>
+  <a href="https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag"><img src="https://img.shields.io/badge/Tag-ModelScope-624aff" alt="Tag on ModelScope"></a>
+  <a href="https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash"><img src="https://img.shields.io/badge/Flash-ModelScope-624aff" alt="Flash on ModelScope"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
 </p>
 
-> **🚀 Coming soon.** Weights, code and docs go live on **November 9, 2026 at 10:00 Beijing time** (13:00 Melbourne · Nov 8, 18:00 San Francisco).
-> ⭐ **Star** this repo, or **Watch → Custom → Releases**, to be notified the moment it's out.
+## Three builds, one brain
+
+All three builds share the same brain: one 32B model that listens to your voice, decides when you have finished, and writes the reply. They differ only in **how the reply becomes sound**.
+
+| | **Tag** (recommended) | **Flash** | **E2E** (preview) |
+|---|---|---|---|
+| How it speaks | The brain writes the reply with sound tags (`[laughter]`, `[sigh]`, `<strong>…</strong>` …); an expressive speech model performs them | Same tagged reply, spoken by a lighter, faster speech model (one forward pass per 80 ms frame) | No separate speech model: a talker inside the 32B model turns the reply into continuous voice vectors, and a decoder turns them into sound |
+| Best for | Expressive voice: companions, characters, demos | Speed and scale: customer service, in-car, many users per GPU | Research on end-to-end expressive speech |
+| Non-verbal sounds (NVV-SuperBench, en / zh) | **0.80 / 0.86** | 0.63 / 0.77 | 0.60 / 0.77 |
+| First audio, one user | ~0.7 s | **0.31 s** | ~1 s |
+| Users per 80 GB GPU (recommended) | 16 | **40** | 4–5 (speaking engine) |
+| GPUs | **1** × 80 GB | **1** × 80 GB | 2 × 80 GB |
+| Serving | vLLM-Omni, one command | vLLM-Omni, one command | own engine |
+| Weights | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) | new build in testing, coming soon |
+| Code | [`tag/`](tag/README.md) | [`flash/`](flash/README.md) | [`docs/deploy.md`](docs/deploy.md) |
+
+**Which one?** Start with **Tag** if you want the voice to act. Pick **Flash** if latency and the number of users per GPU matter most. Same APIs, so you can switch later.
 
 ## Highlights
 
-- **VoiceBench 82.8 and Big Bench Audio 81.8%: the strongest brain among open full-duplex models.** #1 among open full-duplex models on both; level with GPT-4o-mini-Audio on VoiceBench.
+- **VoiceBench 82.8 and Big Bench Audio 81.8%: the strongest brain among open full-duplex models.** #1 among open full-duplex models on both; level with GPT-4o-mini-Audio on VoiceBench. All three builds share this brain.
 - **Paralinguistic understanding 48.6, #1 overall: it hears your tone.** Ahead of Gemini 3.8 Flash (46.9) and Qwen3-Omni (44.6) on LISTEN, StressTest and MSPB. It hears emotion, emphasis, sarcasm, laughter and sighs straight from your voice. Its ears are [DuplexJev](https://github.com/adventists-ai/duplexjev), our open speech-decision model.
-- **NVV-SuperBench 0.74 (Chinese) and 0.68 (English): it speaks with tone.** The baseline without expression scores 0.37 / 0.27. The model decides from the conversation when to laugh, when to sigh, and when to clear a dry throat.
-- **Starts talking about 0.4 s after you stop: it's fast.** It listens the whole time you talk and drafts its reply as you go. When you cut in, it stops and answers your new question.
+- **NVV-SuperBench 0.86 (Chinese) and 0.80 (English) with the Tag build: it speaks with tone.** The model decides from the conversation when to laugh, sigh, breathe or clear its throat, and the voice performs it instead of reading the tag aloud.
+- **Fast: first audio in 0.31 s with Flash.** It listens the whole time you talk and drafts its reply as you go. When you cut in, it stops and answers your new question.
 - **Full-Duplex-Bench v3 tool calling: Pass@1 48%, ahead of Grok (43%), with a 100% response rate: it gets work done.** Live mode lets it work together with a larger backend model, and it is compatible with the OpenAI GPT-Live interface format. Every reply comes with an auditable transcript.
-- **Runs on a single GPU: yours to deploy.** A quantized build runs on a single consumer GPU. Apache-2.0 code and weights, free for commercial use.
+- **One 80 GB GPU, one command (Tag and Flash).** Served by vLLM-Omni; up to 16 (Tag) or 40 (Flash) concurrent users per GPU. Apache-2.0 code and weights, free for commercial use.
 
 <p align="center">
   <img src="docs/assets/bench/voicebench_en.png" width="49%" alt="VoiceBench overall, full-duplex models">
@@ -44,54 +56,48 @@
   <img src="docs/assets/bench/paraling_en.png" width="49%" alt="Paralinguistic understanding, public benchmarks combined">
 </p>
 <p align="center">
-  <img src="docs/assets/bench/nvv_en.png" width="98%" alt="NVV-SuperBench, non-verbal sounds in speech">
+  <img src="docs/assets/bench/nvv3_en.png" width="98%" alt="NVV-SuperBench, non-verbal sounds in speech, three builds">
 </p>
 
-<sub>Self-run unless noted. VoiceBench: official evaluators with a gpt-4o-mini judge; AlpacaEval on the standard 199-question subset. Big Bench Audio: GPT-4.1 judges the transcript of the spoken answer; other models from Artificial Analysis. Full-Duplex-Bench v3: best of several runs; other systems from the FDB v3 paper (Apr 2026). Paralinguistic understanding: same prompts and option rotation for every model. NVV-SuperBench: official prompts and metric, 50 items per class per language, Gemini 3 Flash judge.</sub>
+<sub>Self-run unless noted. VoiceBench: official evaluators with a gpt-4o-mini judge; AlpacaEval on the standard 199-question subset. Big Bench Audio: GPT-4.1 judges the transcript of the spoken answer; other models from Artificial Analysis. Full-Duplex-Bench v3: best of several runs; other systems from the FDB v3 paper (Apr 2026). Paralinguistic understanding: same prompts and option rotation for every model. NVV-SuperBench: official prompts and metric, 50 items per class per language, Gemini 3 Flash judge; the three builds speak the same tagged reply texts in the Chelsie voice. Latency and concurrency: one H100 80 GB, users arriving within 10 s.</sub>
 
 ## How it works
 
-- **A vector language hidden inside the model.** We found that the stream of continuous vectors a speech LLM builds while it listens is a complete language in its own right. A frozen LLM reads it as easily as text, and it carries both what was said and how it was said: intonation, emphasis and emotion. Sophon-Realtime v1's voice writes this vector language directly, then turns it back into sound. Hearing and speaking share one representation, so the tone the model can hear is the tone it can speak.
 - **Listens continuously.** At each pause, the same model decides in a single token whether you've finished, are still talking, are back-channeling or are thinking.
 - **Drafts early, speaks on time.** A reply is drafted from your first pause and released the moment the model decides it's its turn. If you keep talking, the draft is dropped before you hear it.
-- **Remembers what you actually heard.** History keeps the real audio of both sides. When you interrupt, only the part you heard is kept.
+- **Writes how to say it, not just what.** The brain marks where to laugh, sigh, breathe, cough or stress a word. Tag and Flash perform these marks; they are never read aloud.
+- **Barge-in.** When you interrupt, it stops and keeps only the part you actually heard in the conversation history.
 
-## Arriving on November 9
+## Quick start
 
-- 🧠 Open weights for **Sophon-Realtime v1** on Hugging Face and ModelScope
-- 📦 `pip install` package: one command to serve on a single GPU
-- 🔌 Live mode with a backend model, compatible with the OpenAI GPT-Live interface format
-- 🎧 Browser demo: talk to it with your microphone
-- 📖 Docs: quick start, deployment, fine-tuning
-
-## Deploy
-
-The Expressive build (thinker + concurrent speaking engine + web demo) installs with one script and runs on two 80 GB GPUs:
+**Tag** (one 80 GB GPU):
 
 ```bash
-bash scripts/install.sh
-SOPHON_MODEL_DIR=$PWD/Sophon-Realtime-v1 THINKER_GPU=0 TALKER_GPU=1 bash scripts/start.sh
+git clone https://github.com/adventists-ai/sophon-realtime && cd sophon-realtime/tag
+bash install.sh                 # venv + vLLM-Omni + plugin, downloads the weights (~45 GB)
+GPU=0 PORT=8000 bash start.sh
+python client_example.py --wav my_question.wav --lang en
 ```
 
-See [docs/deploy.md](docs/deploy.md) for requirements, the WebSocket API and limits.
-
-**Tag build: one 80 GB GPU, one command (vLLM-Omni).** The thinker writes sound tags and a streaming tag-tts voice performs them. Up to **16 concurrent users per GPU** at ~0.75 s first audio (one H100, measured); full duplex answers ~0.7 s after you stop.
+**Flash** (one 80 GB GPU):
 
 ```bash
-cd tag && bash install.sh && GPU=0 PORT=8000 bash start.sh
+cd sophon-realtime/flash
+bash install.sh
+modelscope download --model AdventistsAI/Sophon-Realtime-32B-Flash --local_dir ./model   # or: hf download adventists-ai/Sophon-Realtime-32B-Flash --local-dir ./model
+GPU=0 PORT=8000 bash start.sh
+python client_example.py --wav my_question.wav --lang en --voice chelsie
 ```
 
-| Concurrent users (one H100) | First audio, median / max |
-|---|---|
-| 1 | 0.67 s |
-| 8 | 0.61 / 0.76 s |
-| 16 | 0.75 / 1.07 s |
+Both serve `ws://HOST:PORT/v1/realtime` (full duplex, OpenAI-Realtime-style) and `POST /v1/chat/completions` (audio in, text + audio out). Details: [tag/README.md](tag/README.md) · [flash/README.md](flash/README.md).
 
-See [tag/README.md](tag/README.md) for the APIs, multi-GPU setup and details.
+## E2E (preview)
+
+The E2E build speaks without a separate speech model. While the 32B model listens, it builds a stream of continuous vectors that carries both what was said and how; the E2E talker writes replies in that same vector language and a decoder turns it into sound, so hearing and speaking share one representation. It runs on two 80 GB GPUs with our own engine ([docs/deploy.md](docs/deploy.md)). A new build is in testing; its weights will be published here when it is ready.
 
 ## Fine-tuning
 
-Adapt the thinker (persona, tone, domain knowledge, tool use) with LoRA in [ms-swift](https://github.com/modelscope/ms-swift) on one 80 GB GPU. The voice, expressive sound tags and turn-taking are kept. See [finetune/](finetune/README.md).
+Adapt the brain (persona, tone, domain knowledge, tool use) with LoRA in [ms-swift](https://github.com/modelscope/ms-swift) on one 80 GB GPU. The voice, expressive sound tags and turn-taking are kept. See [finetune/](finetune/README.md).
 
 ## From the same team
 
@@ -99,6 +105,6 @@ Adapt the thinker (persona, tone, domain knowledge, tool use) with LoRA in [ms-s
 
 ## License
 
-[Apache-2.0](LICENSE) for code and weights.
+[Apache-2.0](LICENSE) for code and weights. See each build's `NOTICE` for third-party components.
 
 <p align="center"><sub>Sophon series · by <a href="https://github.com/adventists-ai">Adventists AI</a></sub></p>

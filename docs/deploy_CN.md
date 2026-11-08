@@ -1,6 +1,8 @@
-# 部署 Sophon-Realtime v1
+# 部署 E2E 版（预览）
 
 [English](deploy.md)
+
+> **预览版。** E2E 版是研究预览；新版本正在测试，准备好后发布权重。生产环境请用 [Tag](../tag/README_CN.md) 或 [Flash](../flash/README_CN.md) 版：一张显卡、一条命令。
 
 Sophon-Realtime v1 由三个本地服务组成：
 
@@ -13,7 +15,7 @@ Sophon-Realtime v1 由三个本地服务组成：
 ## 环境要求
 
 - Linux，NVIDIA 驱动 580 及以上（安装的 PyTorch 是 CUDA 13 版本），Python 3.10+。
-- **两张 80 GB 显卡**（H100 / A100 80G / H800 等）：思考器一张，发声引擎一张。单卡版本正在开发。
+- **两张 80 GB 显卡**（H100 / A100 80G / H800 等）：思考器一张，发声引擎一张。
 - 权重约需 80 GB 磁盘。
 
 ## 安装

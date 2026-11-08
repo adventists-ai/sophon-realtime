@@ -1,6 +1,8 @@
-# Deploying Sophon-Realtime v1
+# Deploying the E2E build (preview)
 
 [中文](deploy_CN.md)
+
+> **Preview.** The E2E build is a research preview; a new build is in testing and its weights will be published when it is ready. For production use the [Tag](../tag/README.md) or [Flash](../flash/README.md) build: one GPU, one command.
 
 Sophon-Realtime v1 runs as three local services:
 
@@ -13,7 +15,7 @@ Sophon-Realtime v1 runs as three local services:
 ## Requirements
 
 - Linux, NVIDIA driver 580 or newer (the wheels are built for CUDA 13), Python 3.10+.
-- **Two 80 GB GPUs** (H100 / A100 80G / H800 …): one for the thinker, one for the speaking engine. A single-GPU build is in progress.
+- **Two 80 GB GPUs** (H100 / A100 80G / H800 …): one for the thinker, one for the speaking engine.
 - About 80 GB of disk for the weights.
 
 ## Install

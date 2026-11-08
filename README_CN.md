@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/banner_v1_zh.png" alt="Sophon-Realtime v1：听得懂语气，也说得出语气" width="880">
+  <img src="docs/assets/banner_v1_zh.png" alt="智子实时语音 Sophon-Realtime v1：听得懂语气，也说得出语气" width="880">
 </p>
 
 <p align="center">
@@ -9,31 +9,43 @@
 <h1 align="center">听得懂语气，也说得出语气</h1>
 
 <p align="center">
-  <b>Sophon-Realtime v1 是一个开源的全双工语音模型：你说话时它一直在听，听得出你<i>怎么</i>说；回答时，声音里也带着语气。</b>
+  <b>智子实时语音 Sophon-Realtime v1 是一个开源全双工语音模型系列：你说话时它一直在听，听得出你<i>怎么</i>说；回答时，该笑就笑，该叹气就叹气，该换气就换气。</b>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/%F0%9F%9A%80%20%E5%BC%80%E6%BA%90-2026%E5%B9%B411%E6%9C%889%E6%97%A5-22D3A6?style=for-the-badge" alt="2026 年 11 月 9 日开源">
-  <a href="https://github.com/adventists-ai/sophon-realtime/subscription"><img src="https://img.shields.io/badge/%F0%9F%94%94-%E5%85%B3%E6%B3%A8%E5%8F%91%E5%B8%83-181717?style=for-the-badge&logo=github" alt="关注发布"></a>
-</p>
-
-<p align="center">
-  <a href="https://huggingface.co/adventists-ai/Sophon-Realtime-v1"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-11%E6%9C%889%E6%97%A5%E4%B8%8A%E7%BA%BF-yellow" alt="Hugging Face：11 月 9 日上线"></a>
-  <a href="https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-v1"><img src="https://img.shields.io/badge/%E9%AD%94%E6%90%AD-11%E6%9C%889%E6%97%A5%E4%B8%8A%E7%BA%BF-624aff" alt="魔搭：11 月 9 日上线"></a>
+  <a href="https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag"><img src="https://img.shields.io/badge/Tag-%E9%AD%94%E6%90%AD-624aff" alt="Tag 魔搭"></a>
+  <a href="https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash"><img src="https://img.shields.io/badge/Flash-%E9%AD%94%E6%90%AD-624aff" alt="Flash 魔搭"></a>
+  <a href="https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Tag-Hugging%20Face-yellow" alt="Tag Hugging Face"></a>
+  <a href="https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Flash-Hugging%20Face-yellow" alt="Flash Hugging Face"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
 </p>
 
-> **🚀 即将开源。** 权重、代码和文档将于 **2026 年 11 月 9 日北京时间上午 10:00** 公开。
-> ⭐ 点 **Star**，或者 **Watch → Custom → Releases**，发布时第一时间收到通知。
+## 三个版本，同一个大脑
+
+三个版本的大脑完全相同：同一个 32B 模型负责听你说话、判断你说完没有、写出回复。区别只在于**回复怎么变成声音**。
+
+| | **Tag**（推荐） | **Flash** | **E2E**（预览） |
+|---|---|---|---|
+| 怎么出声 | 大脑写出带声音标签的回复（`[laughter]`、`[sigh]`、`<strong>…</strong>` 等），由一个擅长表演的语音模型演出来 | 同样是带标签的回复，交给更轻、更快的语音模型来说（每 80 ms 一帧，一次前向） | 不用单独的语音模型：32B 模型内部的说话头把回复直接变成连续的声音向量，再由解码器还原成声音 |
+| 适合 | 表现力优先：陪伴、角色、演示 | 速度和并发优先：客服、车机、一张卡服务很多人 | 端到端表达的研究 |
+| 非语言声音（NVV-SuperBench，英 / 中） | **0.80 / 0.86** | 0.63 / 0.77 | 0.60 / 0.77 |
+| 单路首包 | 约 0.7 s | **0.31 s** | 约 1 s |
+| 每张 80 GB 卡建议并发 | 16 路 | **40 路** | 4–5 路（说话引擎） |
+| 显卡 | **1** × 80 GB | **1** × 80 GB | 2 × 80 GB |
+| 部署 | vLLM-Omni，一条命令 | vLLM-Omni，一条命令 | 自研引擎 |
+| 权重 | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) | 新版本测试中，稍后发布 |
+| 代码 | [`tag/`](tag/README_CN.md) | [`flash/`](flash/README_CN.md) | [`docs/deploy_CN.md`](docs/deploy_CN.md) |
+
+**怎么选？** 想让声音"会演"，先用 **Tag**；最看重延迟和单卡能接多少人，用 **Flash**。两者接口相同，之后可以随时切换。
 
 ## 亮点
 
-- **VoiceBench 82.8、Big Bench Audio 81.8%：开源全双工里最强的「脑子」。** 两项都是开源全双工模型第一，VoiceBench 与 GPT-4o-mini-Audio 持平。
+- **VoiceBench 82.8、Big Bench Audio 81.8%：开源全双工里最强的「大脑」。** 两项都是开源全双工模型第一，VoiceBench 与 GPT-4o-mini-Audio 持平。三个版本共用这个大脑。
 - **副语言理解 48.6，综合第一：听得懂语气。** 在 LISTEN、StressTest、MSPB 公开基准上高于 Gemini 3.8 Flash（46.9）和 Qwen3-Omni（44.6）。它直接从声音里听出情绪、重音、反讽、笑声和叹气。它的耳朵是我们开源的语音决策模型 [DuplexJev](https://github.com/adventists-ai/duplexjev/blob/main/README_CN.md)。
-- **NVV-SuperBench 中文 0.74、英文 0.68：说得出语气。** 无表达能力的基线只有 0.37 / 0.27。回答时什么时候笑、什么时候叹气、嗓子干了要不要清一清，由模型根据对话自己决定。
-- **约 0.4 秒开口：快。** 你说话的全程它都在听，回复边听边起草；你插话，它马上停下，回答你的新问题。
+- **NVV-SuperBench：Tag 版中文 0.86、英文 0.80，说得出语气。** 什么时候笑、叹气、换气、清嗓子，由模型根据对话自己决定；声音把这些标记演出来，不会把标签念出来。
+- **快：Flash 版首包 0.31 秒。** 你说话的全程它都在听，回复边听边起草；你插话，它马上停下，回答你的新问题。
 - **Full-Duplex-Bench v3 工具调用 Pass@1 48%，高于 Grok（43%）；接话成功率 100%：能干活。** 支持 Live 模式，可以和后端大模型联合工作；兼容 OpenAI GPT-Live 的接口格式。每句回答都有文字记录，可以审计。
-- **单张显卡即可部署：能自己部署。** 量化版本可在单张消费级显卡上运行。代码和权重都是 Apache-2.0，可以商用。
+- **一张 80 GB 显卡、一条命令（Tag 和 Flash）。** 基于 vLLM-Omni 部署，单卡建议并发 Tag 16 路、Flash 40 路。代码和权重都是 Apache-2.0，可以商用。
 
 <p align="center">
   <img src="docs/assets/bench/voicebench_zh.png" width="49%" alt="VoiceBench 总分，全双工模型">
@@ -44,61 +56,55 @@
   <img src="docs/assets/bench/paraling_zh.png" width="49%" alt="副语言理解，公开基准合计">
 </p>
 <p align="center">
-  <img src="docs/assets/bench/nvv_zh.png" width="98%" alt="NVV-SuperBench，语音里的非语言声音">
+  <img src="docs/assets/bench/nvv3_zh.png" width="98%" alt="NVV-SuperBench，三个版本的非语言声音">
 </p>
 
-<sub>未注明的为自测。VoiceBench：官方评测器，gpt-4o-mini 判分；AlpacaEval 用 199 题标准子集。Big Bench Audio：语音回答转写后由 GPT-4.1 判分，其他模型来自 Artificial Analysis。Full-Duplex-Bench v3：取多次运行中的最好成绩，其他系统来自 FDB v3 论文（2026 年 4 月）。副语言理解：所有模型用相同提示和选项轮换。NVV-SuperBench：官方提示和指标，每类每语种 50 条，Gemini 3 Flash 判分。</sub>
+<sub>除注明外均为自测。VoiceBench：官方评测脚本，gpt-4o-mini 裁判；AlpacaEval 用标准 199 题子集。Big Bench Audio：GPT-4.1 对语音回答的转写打分，其他模型数据来自 Artificial Analysis。Full-Duplex-Bench v3：多次运行取最好，其他系统数据来自 FDB v3 论文（2026 年 4 月）。副语言理解：所有模型同样的提示词和选项轮换。NVV-SuperBench：官方题目与指标，每类每种语言 50 条，Gemini 3 Flash 裁判；三个版本念同一批带标签的回复文字，同用 Chelsie 音色。延迟和并发：单张 H100 80 GB，用户在 10 秒内陆续接入。</sub>
 
-## 工作原理
+## 工作方式
 
-- **一门藏在模型里的「向量语言」。** 我们发现，语音大模型在听声音时，内部用的那串连续向量本身就是一门完整的语言：冻结的大模型能像读文字一样直接读懂它，里面既有说了什么，也有怎么说的，包括语调、轻重、情绪。Sophon-Realtime v1 的发声端直接「写」这门向量语言，再把它还原成声音。听和说用的是同一套表示，所以模型听得懂的语气，它也说得出来。
-- **一直在听。** 音频持续流入模型。每次停顿，同一个模型用一个 token 判断：你说完了、还在说、在附和，还是在想。
-- **提前起草，准时开口。** 第一次停顿就开始起草回复，判断轮到自己时立刻说出来；你如果继续说，草稿在你听到之前就丢掉。
-- **记得你真正听到了什么。** 历史里保存双方的真实音频。你打断时，只保留你已经听到的部分。
+- **一直在听。** 每次你停顿，同一个模型用一个 token 判断：你说完了、还在说、只是附和，还是在想。
+- **提前起草，按时开口。** 你第一次停顿时它就开始起草，判定轮到自己时立刻说出来；如果你接着说，草稿在你听到之前就丢掉。
+- **不只写说什么，还写怎么说。** 大脑会标出哪里该笑、叹气、换气、咳嗽、加重语气；Tag 和 Flash 把这些标记演出来，不会念出来。
+- **可以随时打断。** 你一插话它就停下，对话历史里只保留你真正听到的那部分。
 
-## 11 月 9 日上线
+## 快速上手
 
-- 🧠 **Sophon-Realtime v1** 开放权重（Hugging Face、魔搭）
-- 📦 `pip install` 一行安装，单张显卡一条命令启动服务
-- 🔌 Live 模式接后端大模型，兼容 OpenAI GPT-Live 接口格式
-- 🎧 网页 Demo：打开麦克风就能对话
-- 📖 文档：快速上手、部署、微调
-
-## 部署
-
-Expressive 版（思考器 + 并发发声引擎 + 网页 demo）一个脚本安装，用两张 80G 显卡运行：
+**Tag**（一张 80 GB 显卡）：
 
 ```bash
-bash scripts/install.sh
-SOPHON_MODEL_DIR=$PWD/Sophon-Realtime-v1 THINKER_GPU=0 TALKER_GPU=1 bash scripts/start.sh
+git clone https://github.com/adventists-ai/sophon-realtime && cd sophon-realtime/tag
+bash install.sh                 # 建环境、装 vLLM-Omni 和插件、下载权重（约 45 GB）
+GPU=0 PORT=8000 bash start.sh
+python client_example.py --wav my_question.wav --lang zh
 ```
 
-环境要求、WebSocket 接口和限制见 [docs/deploy_CN.md](docs/deploy_CN.md)。
-
-**Tag 版：单张 80G 显卡、一条命令（vLLM-Omni）。** 思考器写声音标签，流式 tag-tts 把它们演出来。单张 H100 实测**每卡 16 路并发**、首包约 0.75 秒；全双工下用户说完约 0.7 秒开口。
+**Flash**（一张 80 GB 显卡）：
 
 ```bash
-cd tag && bash install.sh && GPU=0 PORT=8000 bash start.sh
+cd sophon-realtime/flash
+bash install.sh
+modelscope download --model AdventistsAI/Sophon-Realtime-32B-Flash --local_dir ./model
+GPU=0 PORT=8000 bash start.sh
+python client_example.py --wav my_question.wav --lang zh --voice chelsie
 ```
 
-| 并发（单张 H100） | 首包 中位 / 最慢 |
-|---|---|
-| 1 路 | 0.67 秒 |
-| 8 路 | 0.61 / 0.76 秒 |
-| 16 路 | 0.75 / 1.07 秒 |
+两者都提供 `ws://HOST:PORT/v1/realtime`（全双工，OpenAI Realtime 风格）和 `POST /v1/chat/completions`（语音进，文字 + 语音出）。详见 [tag/README_CN.md](tag/README_CN.md) · [flash/README_CN.md](flash/README_CN.md)。
 
-接口、多卡部署等说明见 [tag/README_CN.md](tag/README_CN.md)。
+## E2E（预览）
+
+E2E 版不用单独的语音模型。32B 模型在听的时候会形成一串连续向量，里面既有说了什么，也有怎么说的；E2E 的说话头用同一种向量语言写出回复，再由解码器还原成声音，听和说用的是同一种表示。它需要两张 80 GB 显卡、使用我们的自研引擎（[docs/deploy_CN.md](docs/deploy_CN.md)）。新版本正在测试，准备好后权重会在这里发布。
 
 ## 微调
 
-用 [ms-swift](https://github.com/modelscope/ms-swift) 给思考器训练 LoRA，可以改人设、口吻、领域知识和工具调用习惯，一张 80G 显卡即可。声音、笑声和咳嗽等声音标签、接话判断都保持不变。说明见 [finetune/](finetune/README_CN.md)。
+可以在一张 80 GB 显卡上用 [ms-swift](https://github.com/modelscope/ms-swift) 以 LoRA 方式调整大脑（人设、语气、领域知识、工具调用），声音、声音标签和接话能力都会保留。详见 [finetune/](finetune/README_CN.md)。
 
 ## 同一团队的其他项目
 
-- **[DuplexJev](https://github.com/adventists-ai/duplexjev/blob/main/README_CN.md)**：语音大模型一次前向，回答语音智能体需要的所有判断（说完没有、要不要打断、情绪、重音），92 毫秒。
+- **[DuplexJev](https://github.com/adventists-ai/duplexjev/blob/main/README_CN.md)**：语音大模型一次前向，回答语音智能体需要的所有判断（说完没、打断、情绪、重音），只要 92 毫秒。
 
-## 许可证
+## 许可
 
-代码和权重都是 [Apache-2.0](LICENSE)。
+代码和权重均为 [Apache-2.0](LICENSE)。第三方组件见各版本目录下的 `NOTICE`。
 
-<p align="center"><sub>Sophon 系列 · <a href="https://github.com/adventists-ai">AI降临派（Adventists AI）</a></sub></p>
+<p align="center"><sub>智子系列 · <a href="https://github.com/adventists-ai">AI 降临派 Adventists AI</a></sub></p>

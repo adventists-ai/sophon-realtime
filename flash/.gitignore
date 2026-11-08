@@ -1,0 +1,7 @@
+.venv/
+logs/
+model/
+.mps/
+__pycache__/
+*.pid
+reply.wav
