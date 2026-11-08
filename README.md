@@ -29,7 +29,7 @@ All three builds share the same brain: one 32B model that listens to your voice,
 | How it speaks | The brain writes the reply with sound tags (`[laughter]`, `[sigh]`, `<strong>…</strong>` …); an expressive speech model performs them | Same tagged reply, spoken by a lighter, faster speech model (one forward pass per 80 ms frame) | No separate speech model: a talker inside the 32B model turns the reply into continuous voice vectors, and a decoder turns them into sound |
 | Best for | Expressive voice: companions, characters, demos | Speed and scale: customer service, in-car, many users per GPU | Research on end-to-end expressive speech |
 | Non-verbal sounds (NVV-SuperBench, en / zh) | **0.80 / 0.86** | 0.63 / 0.77 | 0.60 / 0.77 |
-| First audio, one user | ~0.7 s | **0.31 s** | ~1 s |
+| First audio, one user | ~0.6 s | **0.31 s** | ~1 s |
 | Users per 80 GB GPU (recommended) | 16 | **40** | 4–5 (speaking engine) |
 | GPUs | **1** × 80 GB | **1** × 80 GB | 2 × 80 GB |
 | Serving | vLLM-Omni, one command | vLLM-Omni, one command | own engine |
