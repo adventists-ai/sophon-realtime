@@ -12,20 +12,19 @@ your backend ─── commentary.append / thinking.append ┘
 
 ## Run
 
-Start a Tag or Flash engine first (see [`../tag`](../tag/README.md) or [`../flash`](../flash/README.md)). The gateway talks to the engine's tool bridge, which listens on `SOPHON_BRIDGE_PORT` (127.0.0.1 only). Flash's `start.sh` sets it to `PORT + 700`; for Tag, set it yourself when you start the engine.
+Live mode is not a separate install: it is a small gateway that runs next to a Tag or Flash engine started with the one-command scripts, in the same Python environment. The engine's `start.sh` already opens the tool bridge the gateway needs (on `PORT + 700`, 127.0.0.1 only).
 
 ```bash
-# engine on GPU 0, port 8000, tool bridge 8700
-cd sophon-realtime/flash && GPU=0 PORT=8000 SOPHON_BRIDGE_PORT=8700 bash start.sh
+# 1. start the engine as usual (Tag here; Flash works the same way)
+cd sophon-realtime/tag && GPU=0 PORT=8000 bash start.sh
 
-# gateway (same Python environment as the engine; uses a small Qwen3-ASR-0.6B for the user transcript)
-cd ../live
-python -m sophon_live.gateway --port 8780 \
-  --engine ws://127.0.0.1:8000/v1/realtime --bridge http://127.0.0.1:8700 \
-  --asr /path/to/Qwen3-ASR-0.6B
+# 2. start Live mode next to it
+cd ../live && BUILD=tag PORT=8000 LIVE_PORT=8780 bash start_live.sh
 ```
 
-Then point a GPT-Live client at `ws://HOST:8780/v1/live/sessions`. Open `http://HOST:8780/` for a browser test page (microphone, delegation cards, a demo backend and the protocol event log).
+GPT-Live clients connect to `ws://HOST:8780/v1/live/sessions`; `http://HOST:8780/` is a browser test page (microphone, delegation cards, a demo backend and the protocol event log). Stop with `LIVE_PORT=8780 bash stop_live.sh`.
+
+The gateway loads a small ASR model for the user transcript (`Qwen/Qwen3-ASR-0.6B-hf`, about 2 GB of GPU memory). In mainland China, download it from ModelScope first: `modelscope download --model Qwen/Qwen3-ASR-0.6B-hf --local_dir ./asr`, then `SOPHON_LIVE_ASR=./asr bash start_live.sh`.
 
 ## Protocol coverage
 

@@ -18,7 +18,7 @@ TRT=${TRT:-auto}; [ "$TRT" = auto ] && { $PY/python -c "import tensorrt" 2>/dev/
 sed "s#__HERE__#$HERE#g" config/$CONFIG > logs/deploy_$PORT.yaml
 # tag-tts v1.3: distilled flow, 4 steps, no CFG; several requests' flow chunks share one TensorRT call
 export SOPHON_FLOW_STEPS=${SOPHON_FLOW_STEPS:-4} SOPHON_FLOW_CFG=${SOPHON_FLOW_CFG:-0} SOPHON_FLOW_ONNX=${SOPHON_FLOW_ONNX:-$MODEL_DIR/talker/flow.decoder.estimator.fp32.onnx} COSYVOICE3_BATCH_FLOW=${COSYVOICE3_BATCH_FLOW:-1} SOPHON_FLOW_MAXB=${SOPHON_FLOW_MAXB:-16}
-SOPHON_MODEL=$MODEL_DIR SOPHON_PORT=$PORT VLLM_DISABLE_COMPILE_CACHE=1 COSYVOICE3_TRT=$TRT CUDA_VISIBLE_DEVICES=$DEV PATH=$PY:$PATH \
+SOPHON_MODEL=$MODEL_DIR SOPHON_PORT=$PORT SOPHON_BRIDGE_PORT=${SOPHON_BRIDGE_PORT:-$((PORT+700))} VLLM_DISABLE_COMPILE_CACHE=1 COSYVOICE3_TRT=$TRT CUDA_VISIBLE_DEVICES=$DEV PATH=$PY:$PATH \
   setsid nohup $PY/vllm serve $MODEL_DIR --omni --port $PORT --trust-remote-code --init-timeout 3000 --stage-init-timeout 3000 --deploy-config logs/deploy_$PORT.yaml > logs/server_$PORT.log 2>&1 < /dev/null &
 echo $! > logs/server_$PORT.pid
 echo "starting (first start builds kernels / TensorRT engine: 5-10 min) ... log: logs/server_$PORT.log"

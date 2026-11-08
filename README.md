@@ -91,6 +91,12 @@ python client_example.py --wav my_question.wav --lang en --voice chelsie
 
 Both serve `ws://HOST:PORT/v1/realtime` (full duplex, OpenAI-Realtime-style) and `POST /v1/chat/completions` (audio in, text + audio out). Details: [tag/README.md](tag/README.md) · [flash/README.md](flash/README.md).
 
+**Optional: Live mode** (OpenAI GPT-Live compatible, see [live/](live/README.md)), next to a running engine:
+
+```bash
+cd sophon-realtime/live && BUILD=tag PORT=8000 LIVE_PORT=8780 bash start_live.sh   # GPT-Live clients: ws://HOST:8780/v1/live/sessions
+```
+
 ## Live mode (OpenAI GPT-Live compatible)
 
 [`live/`](live/README.md) is a gateway that speaks the OpenAI GPT-Live protocol in front of a Tag or Flash engine: GPT-Live clients switch by changing the URL and key. Sophon keeps the voice and hands lookups and actions to your backend through delegation, then speaks the result. Optionally, a larger model can run the back office.

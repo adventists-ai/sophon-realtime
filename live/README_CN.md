@@ -6,17 +6,19 @@
 
 ## 运行
 
-先起 Tag 或 Flash 引擎（见 [`../tag`](../tag/README_CN.md)、[`../flash`](../flash/README_CN.md)）。网关通过引擎的工具桥通信，工具桥端口由 `SOPHON_BRIDGE_PORT` 指定（只监听 127.0.0.1）：Flash 的 `start.sh` 默认设为 `PORT + 700`，Tag 需要启动引擎时自己设置。
+Live 模式不用单独安装：它是一个小网关，和用一键脚本启动的 Tag 或 Flash 引擎跑在一起，用同一个 Python 环境。引擎的 `start.sh` 已经打开了网关需要的工具桥（端口 `PORT + 700`，只监听 127.0.0.1）。
 
 ```bash
-cd sophon-realtime/flash && GPU=0 PORT=8000 SOPHON_BRIDGE_PORT=8700 bash start.sh
-cd ../live
-python -m sophon_live.gateway --port 8780 \
-  --engine ws://127.0.0.1:8000/v1/realtime --bridge http://127.0.0.1:8700 \
-  --asr /path/to/Qwen3-ASR-0.6B
+# 1. 照常启动引擎（以 Tag 为例，Flash 一样）
+cd sophon-realtime/tag && GPU=0 PORT=8000 bash start.sh
+
+# 2. 在旁边启动 Live 模式
+cd ../live && BUILD=tag PORT=8000 LIVE_PORT=8780 bash start_live.sh
 ```
 
-GPT-Live 客户端连 `ws://HOST:8780/v1/live/sessions` 即可；浏览器打开 `http://HOST:8780/` 是测试页（麦克风对话、委派卡片、演示后端、协议事件日志）。
+GPT-Live 客户端连 `ws://HOST:8780/v1/live/sessions` 即可；浏览器打开 `http://HOST:8780/` 是测试页（麦克风对话、委派卡片、演示后端、协议事件日志）。停止：`LIVE_PORT=8780 bash stop_live.sh`。
+
+网关会加载一个小的语音识别模型做用户转写（`Qwen/Qwen3-ASR-0.6B-hf`，约 2 GB 显存）。国内建议先从魔搭下载：`modelscope download --model Qwen/Qwen3-ASR-0.6B-hf --local_dir ./asr`，再 `SOPHON_LIVE_ASR=./asr bash start_live.sh`。
 
 ## 前台 + 后台（可选）
 

@@ -91,6 +91,12 @@ python client_example.py --wav my_question.wav --lang zh --voice chelsie
 
 两者都提供 `ws://HOST:PORT/v1/realtime`（全双工，OpenAI Realtime 风格）和 `POST /v1/chat/completions`（语音进，文字 + 语音出）。详见 [tag/README_CN.md](tag/README_CN.md) · [flash/README_CN.md](flash/README_CN.md)。
 
+**可选：开启 Live 模式**（兼容 OpenAI GPT-Live，见 [live/](live/README_CN.md)），在已启动的引擎旁边运行：
+
+```bash
+cd sophon-realtime/live && BUILD=tag PORT=8000 LIVE_PORT=8780 bash start_live.sh   # GPT-Live 客户端连 ws://HOST:8780/v1/live/sessions
+```
+
 ## Live 模式（兼容 OpenAI GPT-Live）
 
 [`live/`](live/README_CN.md) 是一个网关：对外是 OpenAI GPT-Live 协议，后面接 Tag 或 Flash 引擎；GPT-Live 客户端只要换地址和 key 就能用。智子负责听和说，需要查询、办事时通过委派交给你的后端，再把结果说出来；也可以让一个更大的模型做后台。

@@ -609,7 +609,7 @@ def main() -> None:
     ap.add_argument("--host", default="0.0.0.0"); ap.add_argument("--port", type=int, default=8780)
     ap.add_argument("--engine", default="ws://127.0.0.1:8000/v1/realtime")
     ap.add_argument("--bridge", default="http://127.0.0.1:8700")
-    ap.add_argument("--asr", default=os.environ.get("SOPHON_LIVE_ASR", "Qwen3-ASR-0.6B-hf"))
+    ap.add_argument("--asr", default=os.environ.get("SOPHON_LIVE_ASR", "Qwen/Qwen3-ASR-0.6B-hf"))
     ap.add_argument("--path", default="/v1/live/sessions")
     args = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
