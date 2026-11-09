@@ -20,24 +20,6 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
 </p>
 
-## 三个版本，同一个大脑
-
-三个版本的大脑完全相同：同一个 32B 模型负责听你说话、判断你说完没有、写出回复。区别只在于**回复怎么变成声音**。
-
-| | **Tag**（推荐） | **Flash** | **E2E**（预览） |
-|---|---|---|---|
-| 怎么出声 | 大脑写出带声音标签的回复（`[laughter]`、`[sigh]`、`<strong>…</strong>` 等），由一个擅长表演的语音模型演出来 | 同样是带标签的回复，交给更轻、更快的语音模型来说（每 80 ms 一帧，一次前向） | 不用单独的语音模型：32B 模型内部的说话头把回复直接变成连续的声音向量，再由解码器还原成声音 |
-| 适合 | 表现力优先：陪伴、角色、演示 | 速度和并发优先：客服、车机、一张卡服务很多人 | 端到端表达的研究 |
-| 非语言声音（NVV-SuperBench，英 / 中） | **0.80 / 0.86** | 0.63 / 0.77 | 0.60 / 0.77 |
-| 单路首包 | 约 0.6 s | **0.31 s** | 约 1 s |
-| 每张 80 GB 卡建议并发 | 16 路 | **40 路** | 4–5 路（说话引擎） |
-| 显卡 | **1** × 80 GB | **1** × 80 GB | 2 × 80 GB |
-| 部署 | vLLM-Omni，一条命令 | vLLM-Omni，一条命令 | 自研引擎 |
-| 权重 | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) |
-| 代码 | [`tag/`](tag/README_CN.md) | [`flash/`](flash/README_CN.md) | [`docs/deploy_CN.md`](docs/deploy_CN.md) |
-
-**怎么选？** 想让声音"会演"，先用 **Tag**；最看重延迟和单卡能接多少人，用 **Flash**。两者接口相同，之后可以随时切换。
-
 ## 亮点
 
 - **VoiceBench 82.8、Big Bench Audio 81.8%：开源全双工里最强的「大脑」。** 两项都是开源全双工模型第一，VoiceBench 与 GPT-4o-mini-Audio 持平。三个版本共用这个大脑。
@@ -60,6 +42,24 @@
 </p>
 
 <sub>除注明外均为自测。VoiceBench：官方评测脚本，gpt-4o-mini 裁判；AlpacaEval 用标准 199 题子集。Big Bench Audio：GPT-4.1 对语音回答的转写打分，其他模型数据来自 Artificial Analysis。Full-Duplex-Bench v3：多次运行取最好，其他系统数据来自 FDB v3 论文（2026 年 4 月）。副语言理解：所有模型同样的提示词和选项轮换。NVV-SuperBench：官方题目与指标，每类每种语言 50 条，Gemini 3 Flash 裁判；三个版本念同一批带标签的回复文字，同用 Chelsie 音色。延迟和并发：单张 H100 80 GB，用户在 10 秒内陆续接入。</sub>
+
+## 三个版本，同一个大脑
+
+三个版本的大脑完全相同：同一个 32B 模型负责听你说话、判断你说完没有、写出回复。区别只在于**回复怎么变成声音**。
+
+| | **Tag**（推荐） | **Flash** | **E2E**（预览） |
+|---|---|---|---|
+| 怎么出声 | 大脑写出带声音标签的回复（`[laughter]`、`[sigh]`、`<strong>…</strong>` 等），由一个擅长表演的语音模型演出来 | 同样是带标签的回复，交给更轻、更快的语音模型来说（每 80 ms 一帧，一次前向） | 不用单独的语音模型：32B 模型内部的说话头把回复直接变成连续的声音向量，再由解码器还原成声音 |
+| 适合 | 表现力优先：陪伴、角色、演示 | 速度和并发优先：客服、车机、一张卡服务很多人 | 端到端表达的研究 |
+| 非语言声音（NVV-SuperBench，英 / 中） | **0.80 / 0.86** | 0.63 / 0.77 | 0.60 / 0.77 |
+| 单路首包 | 约 0.6 s | **0.31 s** | 约 1 s |
+| 每张 80 GB 卡建议并发 | 16 路 | **40 路** | 4–5 路（说话引擎） |
+| 显卡 | **1** × 80 GB | **1** × 80 GB | 2 × 80 GB |
+| 部署 | vLLM-Omni，一条命令 | vLLM-Omni，一条命令 | 自研引擎 |
+| 权重 | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) |
+| 代码 | [`tag/`](tag/README_CN.md) | [`flash/`](flash/README_CN.md) | [`docs/deploy_CN.md`](docs/deploy_CN.md) |
+
+**怎么选？** 想让声音"会演"，先用 **Tag**；最看重延迟和单卡能接多少人，用 **Flash**。两者接口相同，之后可以随时切换。
 
 ## 工作方式
 

@@ -20,24 +20,6 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
 </p>
 
-## Three builds, one brain
-
-All three builds share the same brain: one 32B model that listens to your voice, decides when you have finished, and writes the reply. They differ only in **how the reply becomes sound**.
-
-| | **Tag** (recommended) | **Flash** | **E2E** (preview) |
-|---|---|---|---|
-| How it speaks | The brain writes the reply with sound tags (`[laughter]`, `[sigh]`, `<strong>…</strong>` …); an expressive speech model performs them | Same tagged reply, spoken by a lighter, faster speech model (one forward pass per 80 ms frame) | No separate speech model: a talker inside the 32B model turns the reply into continuous voice vectors, and a decoder turns them into sound |
-| Best for | Expressive voice: companions, characters, demos | Speed and scale: customer service, in-car, many users per GPU | Research on end-to-end expressive speech |
-| Non-verbal sounds (NVV-SuperBench, en / zh) | **0.80 / 0.86** | 0.63 / 0.77 | 0.60 / 0.77 |
-| First audio, one user | ~0.6 s | **0.31 s** | ~1 s |
-| Users per 80 GB GPU (recommended) | 16 | **40** | 4–5 (speaking engine) |
-| GPUs | **1** × 80 GB | **1** × 80 GB | 2 × 80 GB |
-| Serving | vLLM-Omni, one command | vLLM-Omni, one command | own engine |
-| Weights | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) |
-| Code | [`tag/`](tag/README.md) | [`flash/`](flash/README.md) | [`docs/deploy.md`](docs/deploy.md) |
-
-**Which one?** Start with **Tag** if you want the voice to act. Pick **Flash** if latency and the number of users per GPU matter most. Same APIs, so you can switch later.
-
 ## Highlights
 
 - **VoiceBench 82.8 and Big Bench Audio 81.8%: the strongest brain among open full-duplex models.** #1 among open full-duplex models on both; level with GPT-4o-mini-Audio on VoiceBench. All three builds share this brain.
@@ -60,6 +42,24 @@ All three builds share the same brain: one 32B model that listens to your voice,
 </p>
 
 <sub>Self-run unless noted. VoiceBench: official evaluators with a gpt-4o-mini judge; AlpacaEval on the standard 199-question subset. Big Bench Audio: GPT-4.1 judges the transcript of the spoken answer; other models from Artificial Analysis. Full-Duplex-Bench v3: best of several runs; other systems from the FDB v3 paper (Apr 2026). Paralinguistic understanding: same prompts and option rotation for every model. NVV-SuperBench: official prompts and metric, 50 items per class per language, Gemini 3 Flash judge; the three builds speak the same tagged reply texts in the Chelsie voice. Latency and concurrency: one H100 80 GB, users arriving within 10 s.</sub>
+
+## Three builds, one brain
+
+All three builds share the same brain: one 32B model that listens to your voice, decides when you have finished, and writes the reply. They differ only in **how the reply becomes sound**.
+
+| | **Tag** (recommended) | **Flash** | **E2E** (preview) |
+|---|---|---|---|
+| How it speaks | The brain writes the reply with sound tags (`[laughter]`, `[sigh]`, `<strong>…</strong>` …); an expressive speech model performs them | Same tagged reply, spoken by a lighter, faster speech model (one forward pass per 80 ms frame) | No separate speech model: a talker inside the 32B model turns the reply into continuous voice vectors, and a decoder turns them into sound |
+| Best for | Expressive voice: companions, characters, demos | Speed and scale: customer service, in-car, many users per GPU | Research on end-to-end expressive speech |
+| Non-verbal sounds (NVV-SuperBench, en / zh) | **0.80 / 0.86** | 0.63 / 0.77 | 0.60 / 0.77 |
+| First audio, one user | ~0.6 s | **0.31 s** | ~1 s |
+| Users per 80 GB GPU (recommended) | 16 | **40** | 4–5 (speaking engine) |
+| GPUs | **1** × 80 GB | **1** × 80 GB | 2 × 80 GB |
+| Serving | vLLM-Omni, one command | vLLM-Omni, one command | own engine |
+| Weights | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) |
+| Code | [`tag/`](tag/README.md) | [`flash/`](flash/README.md) | [`docs/deploy.md`](docs/deploy.md) |
+
+**Which one?** Start with **Tag** if you want the voice to act. Pick **Flash** if latency and the number of users per GPU matter most. Same APIs, so you can switch later.
 
 ## How it works
 
