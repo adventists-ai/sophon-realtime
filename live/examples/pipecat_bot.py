@@ -44,8 +44,8 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     llm = OpenAIRealtimeLLMService(
         api_key=os.getenv("SOPHON_API_KEY", "any"),  # a key from SOPHON_LIVE_REALTIME_KEYS_FILE, if you set one
         base_url=SOPHON_URL,
-        model="sophon-realtime",
         settings=OpenAIRealtimeLLMService.Settings(
+            model="sophon-realtime",
             system_instruction="You are a friendly voice assistant. Keep replies to one or two short sentences.",
         ),
     )
