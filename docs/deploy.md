@@ -2,7 +2,7 @@
 
 [中文](deploy_CN.md)
 
-> **Preview.** The E2E build is a research preview; a new build is in testing and its weights will be published when it is ready. For production use the [Tag](../tag/README.md) or [Flash](../flash/README.md) build: one GPU, one command.
+> **Preview.** The E2E build is a research preview; weights: [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E). For production use the [Tag](../tag/README.md) or [Flash](../flash/README.md) build: one GPU, one command.
 
 Sophon-Realtime v1 runs as three local services:
 
