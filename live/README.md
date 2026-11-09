@@ -39,8 +39,10 @@ The same gateway also serves an **OpenAI Realtime** compatible endpoint at `ws:/
 
 | Framework | What to change | Example | Tested |
 |---|---|---|---|
-| LiveKit Agents | `openai.realtime.RealtimeModel(base_url="http://HOST:8780/v1", ...)` | [examples/livekit_agent.py](examples/livekit_agent.py) | livekit-agents 1.8.11: first audio about 0.6 s after the user stops |
-| Pipecat | `OpenAIRealtimeLLMService(base_url="ws://HOST:8780/v1/realtime", ...)` | [examples/pipecat_bot.py](examples/pipecat_bot.py) | pipecat-ai 1.15.0: first audio about 0.3 s after the user stops |
+| LiveKit Agents | `openai.realtime.RealtimeModel(base_url="http://HOST:8780/v1", ...)` | [examples/livekit_agent.py](examples/livekit_agent.py) | livekit-agents 1.8.11 |
+| Pipecat | `OpenAIRealtimeLLMService(base_url="ws://HOST:8780/v1/realtime", ...)` | [examples/pipecat_bot.py](examples/pipecat_bot.py) | pipecat-ai 1.15.0 |
+
+Both frameworks add no noticeable latency: Pipecat measured the same as a direct WebSocket client, LiveKit within about 0.1 s.
 
 Set `SOPHON_LIVE_REALTIME_KEYS_FILE` (one key per line) to require a bearer key on `/v1/realtime`.
 

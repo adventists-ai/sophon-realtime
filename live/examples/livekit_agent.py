@@ -9,7 +9,7 @@ point RealtimeModel at the gateway with base_url.
   #   BUILD=tag PORT=8000 LIVE_PORT=8780 bash ../start_live.sh
   python livekit_agent.py dev        # needs LIVEKIT_URL / LIVEKIT_API_KEY / LIVEKIT_API_SECRET
 
-Tested with livekit-agents 1.8.11: reply text and audio stream back, first audio about 0.6 s after the user stops.
+Tested with livekit-agents 1.8.11: reply text and audio stream back.
 """
 import os
 

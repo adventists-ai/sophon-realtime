@@ -8,7 +8,7 @@ point it at the gateway with base_url (a ws:// URL ending in /v1/realtime).
   #   sophon-realtime serve --port 8000
   #   BUILD=tag PORT=8000 LIVE_PORT=8780 bash ../start_live.sh
 
-Tested with pipecat-ai 1.15.0: reply text and audio stream back, first audio about 0.3 s after the user stops.
+Tested with pipecat-ai 1.15.0: reply text and audio stream back.
 Drop `llm` into any Pipecat transport pipeline (Daily, WebRTC, Twilio, ...) exactly where you would put OpenAI Realtime:
 
     pipeline = Pipeline([transport.input(), llm, transport.output()])

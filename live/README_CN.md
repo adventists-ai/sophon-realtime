@@ -30,8 +30,10 @@ GPT-Live 客户端连 `ws://HOST:8780/v1/live/sessions` 即可；浏览器打开
 
 | 框架 | 要改的地方 | 示例 | 实测 |
 |---|---|---|---|
-| LiveKit Agents | `openai.realtime.RealtimeModel(base_url="http://HOST:8780/v1", ...)` | [examples/livekit_agent.py](examples/livekit_agent.py) | livekit-agents 1.8.11：用户说完约 0.6 秒出声 |
-| Pipecat | `OpenAIRealtimeLLMService(base_url="ws://HOST:8780/v1/realtime", ...)` | [examples/pipecat_bot.py](examples/pipecat_bot.py) | pipecat-ai 1.15.0：用户说完约 0.3 秒出声 |
+| LiveKit Agents | `openai.realtime.RealtimeModel(base_url="http://HOST:8780/v1", ...)` | [examples/livekit_agent.py](examples/livekit_agent.py) | livekit-agents 1.8.11 |
+| Pipecat | `OpenAIRealtimeLLMService(base_url="ws://HOST:8780/v1/realtime", ...)` | [examples/pipecat_bot.py](examples/pipecat_bot.py) | pipecat-ai 1.15.0 |
+
+两个框架都几乎不增加延迟：Pipecat 与直连 WebSocket 客户端相同，LiveKit 多约 0.1 秒以内。
 
 需要鉴权时设置 `SOPHON_LIVE_REALTIME_KEYS_FILE`（每行一个 key），`/v1/realtime` 就会要求 bearer key。
 
