@@ -17,6 +17,7 @@
   <a href="https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash"><img src="https://img.shields.io/badge/Flash-%E9%AD%94%E6%90%AD-624aff" alt="Flash 魔搭"></a>
   <a href="https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Tag-Hugging%20Face-yellow" alt="Tag Hugging Face"></a>
   <a href="https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Flash-Hugging%20Face-yellow" alt="Flash Hugging Face"></a>
+  <a href="https://www.modelscope.cn/studios/AdventistsAI/Sophon-Realtime"><img src="https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%E4%BD%93%E9%AA%8C-%E9%AD%94%E6%90%AD%E5%88%9B%E7%A9%BA%E9%97%B4-22D3A6" alt="在线体验"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
 </p>
 
