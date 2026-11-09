@@ -21,6 +21,19 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
 </p>
 
+## Demo
+
+Real conversations with Sophon-Realtime, recorded as they happened: no edits, no speed-up. Turn the sound on.
+
+https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
+
+<details>
+<summary>Chinese demo</summary>
+
+https://github.com/user-attachments/assets/1d9442ef-84b0-45a3-acd4-2d05a9562397
+
+</details>
+
 ## Highlights
 
 - **VoiceBench 82.8 and Big Bench Audio 81.8%: the strongest brain among open full-duplex models.** #1 among open full-duplex models on both; level with GPT-4o-mini-Audio on VoiceBench. All three builds share this brain.

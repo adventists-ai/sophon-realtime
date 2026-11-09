@@ -21,6 +21,19 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
 </p>
 
+## 演示
+
+和智子实时语音的真实对话录屏，未剪辑、未加速。记得打开声音。
+
+https://github.com/user-attachments/assets/1d9442ef-84b0-45a3-acd4-2d05a9562397
+
+<details>
+<summary>英文演示</summary>
+
+https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
+
+</details>
+
 ## 亮点
 
 - **VoiceBench 82.8、Big Bench Audio 81.8%：开源全双工里最强的「大脑」。** 两项都是开源全双工模型第一，VoiceBench 与 GPT-4o-mini-Audio 持平。三个版本共用这个大脑。
