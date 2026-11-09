@@ -33,6 +33,17 @@ The gateway loads a small ASR model for the user transcript (`Qwen/Qwen3-ASR-0.6
 - Barge-in is handled server-side: when the user talks over Sophon, playback stops.
 - Optional settings: `SOPHON_LIVE_API_KEYS` (comma-separated bearer keys), `SOPHON_LIVE_ALLOW_ORIGINS` (browser origins allowed; other `Origin` headers are rejected, as in GPT-Live), `SOPHON_LIVE_VOICE`.
 
+## OpenAI Realtime face: LiveKit and Pipecat
+
+The same gateway also serves an **OpenAI Realtime** compatible endpoint at `ws://HOST:8780/v1/realtime` (GA event names, function calling, barge-in truncation, PCM16 and G.711). Voice-agent frameworks that support OpenAI Realtime work by changing the base URL, no new plugin needed:
+
+| Framework | What to change | Example | Tested |
+|---|---|---|---|
+| LiveKit Agents | `openai.realtime.RealtimeModel(base_url="http://HOST:8780/v1", ...)` | [examples/livekit_agent.py](examples/livekit_agent.py) | livekit-agents 1.8.11: first audio about 0.6 s after the user stops |
+| Pipecat | `OpenAIRealtimeLLMService(base_url="ws://HOST:8780/v1/realtime", ...)` | [examples/pipecat_bot.py](examples/pipecat_bot.py) | pipecat-ai 1.15.0: first audio about 0.3 s after the user stops |
+
+Set `SOPHON_LIVE_REALTIME_KEYS_FILE` (one key per line) to require a bearer key on `/v1/realtime`.
+
 ## Front + back office (optional)
 
 Set `SOPHON_LIVE_BACKEND=<model>` with an OpenAI-compatible endpoint (`SOPHON_LIVE_BACKEND_URL`, `SOPHON_LIVE_BACKEND_KEY`) and the gateway answers delegations itself with a larger model: Sophon stays on the line, the back office reasons and calls tools. With DeepSeek V4 Pro as the back office, Big Bench Audio rises from 81.2 to about 83.

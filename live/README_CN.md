@@ -24,6 +24,17 @@ GPT-Live 客户端连 `ws://HOST:8780/v1/live/sessions` 即可；浏览器打开
 
 设置 `SOPHON_LIVE_BACKEND=<模型名>` 和 OpenAI 兼容端点（`SOPHON_LIVE_BACKEND_URL`、`SOPHON_LIVE_BACKEND_KEY`），网关会用一个更大的模型自己处理委派：智子在前台说话，后台负责推理和调用工具。后台用 DeepSeek V4 Pro 时，Big Bench Audio 从 81.2 提到约 83。
 
+## OpenAI Realtime 接口：LiveKit 和 Pipecat
+
+同一个网关还提供 **OpenAI Realtime** 兼容接口 `ws://HOST:8780/v1/realtime`（GA 事件名、函数调用、打断截断、PCM16 和 G.711）。支持 OpenAI Realtime 的语音智能体框架，改一下地址就能用，不需要新插件：
+
+| 框架 | 要改的地方 | 示例 | 实测 |
+|---|---|---|---|
+| LiveKit Agents | `openai.realtime.RealtimeModel(base_url="http://HOST:8780/v1", ...)` | [examples/livekit_agent.py](examples/livekit_agent.py) | livekit-agents 1.8.11：用户说完约 0.6 秒出声 |
+| Pipecat | `OpenAIRealtimeLLMService(base_url="ws://HOST:8780/v1/realtime", ...)` | [examples/pipecat_bot.py](examples/pipecat_bot.py) | pipecat-ai 1.15.0：用户说完约 0.3 秒出声 |
+
+需要鉴权时设置 `SOPHON_LIVE_REALTIME_KEYS_FILE`（每行一个 key），`/v1/realtime` 就会要求 bearer key。
+
 ## 实测（单张 H100，模拟后端，14 条录音）
 
 | 引擎 | 该委派的：委派并转述结果 | 不该委派的：直接回答 | 首包（直接答 / 委派） |
