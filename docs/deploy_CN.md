@@ -2,7 +2,7 @@
 
 [English](deploy.md)
 
-> **预览版。** E2E 版是研究预览；新版本正在测试，准备好后发布权重。生产环境请用 [Tag](../tag/README_CN.md) 或 [Flash](../flash/README_CN.md) 版：一张显卡、一条命令。
+> **预览版。** E2E 版是研究预览；权重：[魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E)。生产环境请用 [Tag](../tag/README_CN.md) 或 [Flash](../flash/README_CN.md) 版：一张显卡、一条命令。
 
 Sophon-Realtime v1 由三个本地服务组成：
 
