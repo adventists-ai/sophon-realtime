@@ -39,6 +39,7 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 - **VoiceBench 82.8、Big Bench Audio 81.8%：开源全双工里最强的「大脑」。** 两项都是开源全双工模型第一，VoiceBench 与 GPT-4o-mini-Audio 持平。三个版本共用这个大脑。
 - **副语言理解 48.6，综合第一：听得懂语气。** 在 LISTEN、StressTest、MSPB 公开基准上高于 Gemini 3.8 Flash（46.9）和 Qwen3-Omni（44.6）。它直接从声音里听出情绪、重音、反讽、笑声和叹气。它的耳朵是我们开源的语音决策模型 [DuplexJev](https://github.com/adventists-ai/duplexjev/blob/main/README_CN.md)。
 - **NVV-SuperBench：Tag 版中文 0.86、英文 0.80，说得出语气。** 什么时候笑、叹气、换气、清嗓子，由模型根据对话自己决定；声音把这些标记演出来，不会把标签念出来。
+- **会说你的语言：中文、英文和五种欧洲语言，更多语言陆续加入。** 意大利语、德语、西班牙语、法语、葡萄牙语开箱即用，日语和俄语可用 Flash 版，韩语是下一个。详见[多语言](#多语言)。
 - **快：Flash 版首包 0.31 秒。** 你说话的全程它都在听，回复边听边起草；你插话，它马上停下，回答你的新问题。
 - **Full-Duplex-Bench v3 工具调用 Pass@1 48%，高于 Grok（43%）；接话成功率 100%：能干活。** 支持 [Live 模式](live/README_CN.md)，可以和后端大模型联合工作；兼容 OpenAI GPT-Live 的接口格式。每句回答都有文字记录，可以审计。
 - **一张 80 GB 显卡、一条命令（Tag 和 Flash）。** 基于 vLLM-Omni 部署，单卡建议并发 Tag 16 路、Flash 40 路。代码和权重都是 Apache-2.0，可以商用。
@@ -74,6 +75,19 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 | 代码 | [`tag/`](tag/README_CN.md) | [`flash/`](flash/README_CN.md) | [`docs/deploy_CN.md`](docs/deploy_CN.md) |
 
 **怎么选？** 想让声音"会演"，先用 **Tag**；最看重延迟和单卡能接多少人，用 **Flash**。两者接口相同，之后可以随时切换。
+
+## 多语言
+
+用你自己的语言和它聊。智子实时语音会用你说的语言回答。
+
+| 语言 | 状态 |
+|---|---|
+| 中文、英文 | 完整支持 |
+| 意大利语、德语、西班牙语、法语、葡萄牙语 | 可直接对话：发音清晰，基础问答正确率 80%–92%，多轮对话接近英语水平 |
+| 日语、俄语 | Flash 版可用 |
+| 韩语等 | 即将支持 |
+
+<sub>内部测试，2026 年 11 月：15 种语言各 20 道口语问题，另用 Omnilingua-AudioMC 测了 8 种语言的多轮对话（不含葡萄牙语）。日语是我们重点投入的语言，后续版本会持续加强。</sub>
 
 ## 工作方式
 
