@@ -36,6 +36,7 @@ CHECKS = [float(x) for x in os.environ.get("SOPHON_TURN_CHECKS", "0.2,0.35,0.5,0
 THRS = [float(x) for x in os.environ.get("SOPHON_TURN_THRESHOLDS", "0.95,0.85,0.7,0.5,0.35,0.25").split(",")]
 SPEECH_PROB = float(os.environ.get("SOPHON_SPEECH_PROB", "0.5"))
 SPEC_AT = float(os.environ.get("SOPHON_SPEC_AT", "0.05"))       # after this much silence, speculatively start writing a reply (held silent until DuplexJev judges the turn finished); <=0 disables
+RES_TIMEOUT = float(os.environ.get("SOPHON_RES_TIMEOUT", "15"))  # an append not confirmed by the framework within this time is rolled back (and a reply resent)
 SPEC_MIN_SPEECH = float(os.environ.get("SOPHON_SPEC_MIN_SPEECH", "0.3"))   # only draft speculatively once the user has spoken this long (s)
 MERGE_WINDOW = float(os.environ.get("SOPHON_MERGE_WINDOW", "2.0"))
 FALLBACK_S = float(os.environ.get("SOPHON_TURN_FALLBACK", "2.0"))
@@ -120,6 +121,71 @@ def _self_url():
     return os.environ.get("SOPHON_SELF_URL", "http://127.0.0.1:" + _port())
 
 
+_WARM_STARTED = False
+
+
+def _warm_turn_check():
+    """Once the server answers, run one dummy turn question so the first real session does not pay the cold-start cost."""
+    import urllib.request
+    for _ in range(3600):
+        try:
+            with urllib.request.urlopen(_self_url() + "/v1/models", timeout=5) as r:
+                if r.status == 200: break
+        except Exception:  # noqa: BLE001
+            pass
+        time.sleep(1)
+    else:
+        return
+    for i in range(3):
+        try:
+            t = time.monotonic(); turn_prob_http(np.zeros(SR, np.float32), "en", "")
+            logger.info("sophon duplex: turn check warm-up %d done in %.2fs", i, time.monotonic() - t)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("sophon duplex: turn check warm-up %d failed: %r", i, exc)
+    for i in range(2):                                     # the first realtime session after a cold start is much slower than later ones: run a throwaway one
+        try:
+            t = time.monotonic(); ok = _warm_realtime()
+            logger.info("sophon duplex: realtime warm-up %d %s in %.1fs", i, "got a reply" if ok else "got no reply", time.monotonic() - t)
+            if ok: break
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("sophon duplex: realtime warm-up %d failed: %r", i, exc)
+
+
+def _warm_realtime() -> bool:
+    """One short realtime session on this server (bundled clip, then silence) until a reply has finished."""
+    import asyncio, json as _json, wave
+    import websockets
+    path = os.path.join(os.path.dirname(__file__), "deploy", "warmup.wav")
+    with wave.open(path, "rb") as w:
+        pcm = np.frombuffer(w.readframes(w.getnframes()), dtype="<i2").astype(np.float32) / 32768.0
+    pcm = np.concatenate([np.zeros(SR // 2, np.float32), pcm, np.zeros(SR * 25, np.float32)]).astype("<f4")
+    url = _self_url().replace("http://", "ws://").replace("https://", "wss://") + "/v1/realtime"
+
+    async def run():
+        async with websockets.connect(url, max_size=None) as ws:
+            await ws.send(_json.dumps({"type": "session.update", "session": {
+                "modalities": ["audio", "text"], "input_audio_format": "pcm_f32le", "output_audio_format": "pcm16",
+                "turn_detection": {"type": "server_vad"}, "extra_body": {"auto_response": True, "language": "zh"}}}))
+            done = asyncio.Event()
+
+            async def rd():
+                async for m in ws:
+                    try: t = _json.loads(m).get("type", "")
+                    except Exception: continue  # noqa: E701
+                    if t == "response.done": done.set(); return
+            task = asyncio.ensure_future(rd()); n = SR * 80 // 1000
+            for k in range(0, pcm.size, n):
+                if done.is_set(): break
+                await ws.send(_json.dumps({"type": "input_audio_buffer.append", "audio": base64.b64encode(pcm[k:k + n].tobytes()).decode(),
+                                           "format": "pcm_f32le", "sample_rate_hz": SR}))
+                await asyncio.sleep(0.08)
+            ok = done.is_set(); task.cancel()
+            try: await ws.send(_json.dumps({"type": "session.close"}))
+            except Exception: pass  # noqa: E701
+            return ok
+    return asyncio.run(run())
+
+
 def turn_prob_http(audio: np.ndarray, lang: str, said: str) -> float:
     """Turn question: ask this server's stage 0 directly (/v1/chat/completions, text only, one token, with logprobs). Returns P(finished)."""
     import io, json as _json, urllib.request, wave
@@ -169,9 +235,7 @@ class _Res(PcmAppendReservation):
 
     def rollback(self):
         if self._active and self.payload:
-            self.owner.inflight_t = 0.0
-            if self.payload.get("sophon_kind") == "reply": self.owner.pending_reply = True    # was not sent: retry next time
-            else: self.owner.check_inflight = False
+            self.owner._not_sent(self.payload)
         self.commit()
 
 
@@ -218,6 +282,7 @@ class SophonBuffer(PcmAppendBuffer):
     history: list = field(default_factory=list)              # [{"user": np, "a_audio": np|None, "a_text": str}]
     last_said: str = ""
     tool_mocks: dict = field(default_factory=dict)            # session extra_body.tool_mocks (server-side mock executor)
+    retry: dict | None = None                                # a reply append the framework did not accept: send it again as soon as appends are allowed
     tool_followup: bool = False                              # a tool result is in history: speak the answer as soon as the user is silent
     tool_mode: str = "mock"                                   # "mock": run tool_mocks here; "client": hand calls to the gateway over the bridge
     bridge_key: str | None = None
@@ -243,6 +308,21 @@ class SophonBuffer(PcmAppendBuffer):
     def _reset_turn(self):
         self.pc_hit = False; self.seg_rms = []; self.tool_followup = False; self.max_pf = 0.0; self.last_pb = 0.0; self.spec_id = None; self.gen += 1; self.utt.clear(); self.speech_ms = 0.0; self.silence_ms = 0.0; self.next_check = 0; self.voiced_ms = 0.0
         self.pending_reply = False; self.check_inflight = False; self.decision = None; self.decision_ready = False; self.resume_pending = False
+
+    def _not_sent(self, payload):
+        """An append never reached the engine (rolled back, or its reservation timed out)."""
+        self.inflight_t = 0.0
+        if payload.get("sophon_kind") != "reply":
+            self.check_inflight = False; return
+        sid = payload.get("spec_id")
+        if sid and self.spec_id == sid:                        # speculative draft not released yet: forget it; the normal path emits a fresh reply
+            self.spec_id = None
+            if self.owner_drop is not None: self.owner_drop(sid)
+            return
+        if sid:                                                # already released as the answer: resend it as a normal reply
+            payload = {k: v for k, v in payload.items() if k != "spec_id"}
+        self.retry = payload                                   # committed reply (utterance already moved out of self.utt): resend it as is
+        logger.info("sophon duplex: reply append was not accepted, will resend")
 
     def clear_force_listen(self): pass
     def has_pending(self): return bool(self.utt)
@@ -319,8 +399,10 @@ class SophonBuffer(PcmAppendBuffer):
                         if self.silence_ms == 0: self.t_sil = time.monotonic()
                         self.silence_ms += 20
             now = time.monotonic()
-            for r in list(self.reservations):                 # on framework errors commit/rollback may never be called: treat as void after 2 s
-                if now - r.t0 > 2.0: r._active = False; self.reservations.remove(r)
+            for r in list(self.reservations):                 # on framework errors commit/rollback may never be called: give up after RES_TIMEOUT and roll back
+                if now - r.t0 > RES_TIMEOUT:
+                    logger.warning("sophon duplex: append reservation not confirmed after %.0f s, rolling back", RES_TIMEOUT)
+                    r.rollback()
             if self.inflight_t and now - self.inflight_t > 3.0:
                 self.inflight_t = 0.0
             if self.tool_followup and self.speech_ms == 0 and allow_emit and not self.reservations and not self.inflight_t:
@@ -329,6 +411,13 @@ class SophonBuffer(PcmAppendBuffer):
                      "is_speech": True, "sophon_kind": "reply", "sophon_buf": id(self), "lang": self.lang, "tool_followup": True}
                 logger.info("sophon tool: follow-up reply emitted")
                 return self._res(operation_id, p)
+            if self.retry is not None:
+                if self.speech_ms > 0:
+                    self.retry = None                         # the user is already talking again: their new turn replaces the lost reply
+                elif allow_emit and not self.reservations and not self.inflight_t:
+                    p, self.retry = self.retry, None
+                    logger.info("sophon duplex: resending reply append")
+                    return self._res(operation_id, p)
             if self.speech_ms < 120:
                 return None
             # turn questions don't go through framework appends (each append advances turn/fence and conflicts with a reply still playing); instead a background thread asks the same server's stage 0 directly
@@ -572,6 +661,9 @@ class SophonRealtimeDuplexPlugin(DuplexModelPlugin):
         self._spec_lock = threading.Lock()
         self._keys: dict[str, SophonBuffer] = {}
         self.bridge = _bridge.Bridge(self._bridge_result)
+        global _WARM_STARTED
+        if not _WARM_STARTED and os.environ.get("SOPHON_WARMUP", "1") != "0":
+            _WARM_STARTED = True; threading.Thread(target=_warm_turn_check, daemon=True).start()
 
     def capabilities(self, *, max_sessions):
         return DuplexCapabilities(
@@ -780,6 +872,8 @@ class SophonRealtimeDuplexPlugin(DuplexModelPlugin):
         with self._spec_lock:
             rid = self._spec_rid.get(spec_id)
             if rid is None:
+                if not self._spec_alive(spec_id):
+                    return False                              # its append never reached the engine: emit a fresh reply instead
                 self._spec_pending[spec_id] = "release"; return True
             info = self._reqs.get(rid)
             if info is None or info.get("gen_done"):
@@ -787,6 +881,14 @@ class SophonRealtimeDuplexPlugin(DuplexModelPlugin):
             info["released"] = True
             if info.get("buf") is not None: info["buf"].prev_rid = rid
             return True
+
+    def _spec_alive(self, spec_id):
+        """A speculative append for this id is still waiting to be accepted (reserved, not rolled back)."""
+        for buf in list(self._bufs.values()):
+            for r in list(buf.reservations):
+                if r.active and isinstance(r.payload, dict) and r.payload.get("spec_id") == spec_id:
+                    return True
+        return False
 
     def _drop(self, spec_id):
         with self._spec_lock:
