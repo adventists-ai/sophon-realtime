@@ -39,6 +39,7 @@ https://github.com/user-attachments/assets/1d9442ef-84b0-45a3-acd4-2d05a9562397
 - **VoiceBench 82.8 and Big Bench Audio 81.8%: the strongest brain among open full-duplex models.** #1 among open full-duplex models on both; level with GPT-4o-mini-Audio on VoiceBench. All three builds share this brain.
 - **Paralinguistic understanding 48.6, #1 overall: it hears your tone.** Ahead of Gemini 3.8 Flash (46.9) and Qwen3-Omni (44.6) on LISTEN, StressTest and MSPB. It hears emotion, emphasis, sarcasm, laughter and sighs straight from your voice. Its ears are [DuplexJev](https://github.com/adventists-ai/duplexjev), our open speech-decision model.
 - **NVV-SuperBench 0.86 (Chinese) and 0.80 (English) with the Tag build: it speaks with tone.** The model decides from the conversation when to laugh, sigh, breathe or clear its throat, and the voice performs it instead of reading the tag aloud.
+- **Speaks your language: Chinese, English and five European languages, with more on the way.** Italian, German, Spanish, French and Portuguese work out of the box, Japanese and Russian run on Flash, and Korean is next. See [Languages](#languages).
 - **Fast: first audio in 0.31 s with Flash.** It listens the whole time you talk and drafts its reply as you go. When you cut in, it stops and answers your new question.
 - **Full-Duplex-Bench v3 tool calling: Pass@1 48%, ahead of Grok (43%), with a 100% response rate: it gets work done.** [Live mode](live/README.md) lets it work together with a larger backend model, and it is compatible with the OpenAI GPT-Live interface format. Every reply comes with an auditable transcript.
 - **One 80 GB GPU, one command (Tag and Flash).** Served by vLLM-Omni; up to 16 (Tag) or 40 (Flash) concurrent users per GPU. Apache-2.0 code and weights, free for commercial use.
@@ -74,6 +75,19 @@ All three builds share the same brain: one 32B model that listens to your voice,
 | Code | [`tag/`](tag/README.md) | [`flash/`](flash/README.md) | [`docs/deploy.md`](docs/deploy.md) |
 
 **Which one?** Start with **Tag** if you want the voice to act. Pick **Flash** if latency and the number of users per GPU matter most. Same APIs, so you can switch later.
+
+## Languages
+
+Talk to it in your own language. Sophon-Realtime listens and answers in the language you speak.
+
+| Language | Status |
+|---|---|
+| Chinese, English | Fully supported |
+| Italian, German, Spanish, French, Portuguese | Ready for conversation: clear speech, 80–92% of basic questions answered correctly, multi-turn quality close to English |
+| Japanese, Russian | Available on the Flash build |
+| Korean and more | Coming soon |
+
+<sub>Internal tests, November 2026: 15 languages × 20 spoken questions, plus multi-turn dialogues from Omnilingua-AudioMC in 8 languages (Portuguese not included). Japanese is a priority language for us, and upcoming releases will keep improving it.</sub>
 
 ## How it works
 
