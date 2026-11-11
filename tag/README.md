@@ -41,7 +41,7 @@ python client_example.py --wav my_question.wav --lang en --voice alice
   this off), so first audio is as fast as with a built-in voice. Overwrite a file to replace a voice, delete it to remove it. Voice names are
   lower case (`a-z 0-9 _ - .`); a `.pt` of the same name takes precedence over the clip. Sound tags work with cloned voices too.
 - An unknown or unreadable voice falls back to `chelsie` with a warning in the server log; it never fails the session.
-- Needs the v1.3.1 voice model (`talker/flow.pt` + ONNX, updated on HF / ModelScope on 2026-11-11): older weights still work, but unseen
+- Needs the 1.1.0 voice model (`talker/flow.pt` + ONNX, updated on HF / ModelScope on 2026-11-11): older weights still work, but unseen
   voices sound much closer to the reference with the new ones. `SOPHON_VOICES=/path` keeps voices outside `model/`.
 - **Only clone your own voice or a voice you have permission to use. Do not use it to impersonate or deceive anyone.**
 

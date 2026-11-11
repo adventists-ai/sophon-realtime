@@ -2,7 +2,7 @@
 
 After `pip install sophon-realtime`: vllm serve <Sophon-Realtime dir> --omni --deploy-config <sophon_realtime.yaml>
 """
-__version__ = "0.2.0"
+__version__ = "1.1.0"
 ARCH = "SophonRealtimeForConditionalGeneration"
 TALKER_ARCH = "SophonTTSTalker"
 _done = False
