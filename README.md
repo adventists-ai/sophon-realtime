@@ -40,9 +40,9 @@ https://github.com/user-attachments/assets/1d9442ef-84b0-45a3-acd4-2d05a9562397
 - **Paralinguistic understanding 48.6, #1 overall: it hears your tone.** Ahead of Gemini 3.8 Flash (46.9) and Qwen3-Omni (44.6) on LISTEN, StressTest and MSPB. It hears emotion, emphasis, sarcasm, laughter and sighs straight from your voice. Its ears are [DuplexJev](https://github.com/adventists-ai/duplexjev), our open speech-decision model.
 - **NVV-SuperBench 0.86 (Chinese) and 0.80 (English) with the Tag build: it speaks with tone.** The model decides from the conversation when to laugh, sigh, breathe or clear its throat, and the voice performs it instead of reading the tag aloud.
 - **Speaks your language: Chinese, English and five European languages, with more on the way.** Italian, German, Spanish, French and Portuguese work out of the box, Japanese and Russian run on Flash, and Korean is next. See [Languages](#languages).
-- **Fast: first audio in 0.31 s with Flash.** It listens the whole time you talk and drafts its reply as you go. When you cut in, it stops and answers your new question.
+- **Fast: first audio in about 0.25 s with E2E and 0.31 s with Flash.** It listens the whole time you talk and drafts its reply as you go. When you cut in, it stops and answers your new question.
 - **Full-Duplex-Bench v3 tool calling: Pass@1 48%, ahead of Grok (43%), with a 100% response rate: it gets work done.** [Live mode](live/README.md) lets it work together with a larger backend model, and it is compatible with the OpenAI GPT-Live interface format. Every reply comes with an auditable transcript.
-- **One 80 GB GPU, one command (Tag and Flash).** Served by vLLM-Omni; up to 16 (Tag) or 40 (Flash) concurrent users per GPU. Apache-2.0 code and weights, free for commercial use.
+- **One 80 GB GPU for every build, one command.** Tag and Flash are served by vLLM-Omni; up to 16 (Tag, E2E) or 40 (Flash) concurrent users per GPU. Apache-2.0 code and weights, free for commercial use.
 
 <p align="center">
   <img src="docs/assets/bench/voicebench_en.png" width="49%" alt="VoiceBench overall, full-duplex models">
@@ -61,6 +61,7 @@ https://github.com/user-attachments/assets/1d9442ef-84b0-45a3-acd4-2d05a9562397
 ## News
 
 - **2026-11-11 · v1.1: zero-shot voice cloning** in the Tag and Flash builds. A few seconds of audio and it talks to you in that voice, in real time. [Watch the demo](#zero-shot-voice-cloning-new-in-v11)
+- **2026-11-11 · 1.1.3: E2E is out of preview and runs on one GPU.** New talker, first audio in about 0.25 s, 16 users per 80 GB GPU, NVV-SuperBench 0.75 (English) / 0.85 (Chinese). [Details](#e2e)
 - **2026-11-11 · 1.1.2:** `sophon-realtime serve` turns on CUDA MPS by default; long-reply and cold-start fixes. See the [changelog](CHANGELOG.md).
 - **2026-11-08 · v1.0:** first public release of the Tag, Flash and E2E (preview) builds.
 
@@ -68,16 +69,16 @@ https://github.com/user-attachments/assets/1d9442ef-84b0-45a3-acd4-2d05a9562397
 
 All three builds share the same brain: one 32B model that listens to your voice, decides when you have finished, and writes the reply. They differ only in **how the reply becomes sound**.
 
-| | **Tag** (recommended) | **Flash** | **E2E** (preview) |
+| | **Tag** (recommended) | **Flash** | **E2E** |
 |---|---|---|---|
-| How it speaks | The brain writes the reply with sound tags (`[laughter]`, `[sigh]`, `<strong>…</strong>` …); an expressive speech model performs them | Same tagged reply, spoken by a lighter, faster speech model (one forward pass per 80 ms frame) | No separate speech model: a talker inside the 32B model turns the reply into continuous voice vectors, and a decoder turns them into sound |
-| Best for | Expressive voice: companions, characters, demos | Speed and scale: customer service, in-car, many users per GPU | Research on end-to-end expressive speech |
-| Non-verbal sounds (NVV-SuperBench, en / zh) | **0.80 / 0.86** | 0.63 / 0.77 | 0.60 / 0.77 |
-| First audio, one user | ~0.6 s | **0.31 s** | ~1 s |
-| Users per 80 GB GPU (recommended) | 16 | **40** | 4–5 (speaking engine) |
-| Zero-shot voice cloning | **yes**, from a 3–10 s clip ([how](tag/README.md#zero-shot-voice-cloning)) | **yes**, from a 3–10 s clip ([how](flash/README.md#zero-shot-voice-cloning)) | not yet |
-| GPUs | **1** × 80 GB | **1** × 80 GB | 2 × 80 GB |
-| Serving | vLLM-Omni, one command | vLLM-Omni, one command | own engine |
+| How it speaks | The brain writes the reply with sound tags (`[laughter]`, `[sigh]`, `<strong>…</strong>` …); an expressive speech model performs them | Same tagged reply, spoken by a lighter, faster speech model (one forward pass per 80 ms frame) | No speech-token model: a compact talker (about 350M parameters) reads the tagged reply as it is written and generates continuous voice vectors directly; a decoder turns them into sound |
+| Best for | Expressive voice: companions, characters, demos | Speed and scale: customer service, in-car, many users per GPU | Expressive voice with the fastest first audio; our own engine, easy to modify |
+| Non-verbal sounds (NVV-SuperBench, en / zh) | **0.80 / 0.86** | 0.63 / 0.77 | 0.75 / 0.85 |
+| First audio, one user | ~0.6 s | 0.31 s | **~0.25 s** |
+| Users per 80 GB GPU (recommended) | 16 | **40** | 16 |
+| Zero-shot voice cloning | **yes**, from a 3–10 s clip ([how](tag/README.md#zero-shot-voice-cloning)) | **yes**, from a 3–10 s clip ([how](flash/README.md#zero-shot-voice-cloning)) | no |
+| GPUs | **1** × 80 GB | **1** × 80 GB | **1** × 80 GB |
+| Serving | vLLM-Omni, one command | vLLM-Omni, one command | own engine, one command |
 | Weights | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) |
 | Code | [`tag/`](tag/README.md) | [`flash/`](flash/README.md) | [`docs/deploy.md`](docs/deploy.md) |
 
@@ -172,18 +173,20 @@ https://github.com/user-attachments/assets/74bd6096-b6fc-4433-a1d7-d3e967107193
 
 </details>
 
-## E2E (preview)
+## E2E
 
-The E2E build speaks without a separate speech model. While the 32B model listens, it builds a stream of continuous vectors that carries both what was said and how; the E2E talker writes replies in that same vector language and a decoder turns it into sound, so hearing and speaking share one representation. It runs on two 80 GB GPUs with our own engine ([docs/deploy.md](docs/deploy.md)). Weights: [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E).
+The E2E build has no speech-token model in the middle. A compact talker (about 350M parameters) reads the brain's tagged reply while it is still being written and generates a stream of continuous voice vectors, 12.5 frames per second; a 2-step decoder and a vocoder turn them into 24 kHz audio. Laughs, coughs, sighs, breaths and stressed words are produced by the talker itself, as part of the same stream. Everything runs on **one 80 GB GPU** with our own engine: [docs/deploy.md](docs/deploy.md). Weights: [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E).
 
-**New build (Nov 2026): upgraded decoder, 4 steps.** Same compute per audio chunk as before. On replies from the same talker:
+**New in 1.1.3: out of preview.** New talker, new engine, one GPU instead of two:
 
-| | previous decoder | new decoder |
+| | E2E preview (1.0 – 1.1.2) | **E2E 1.1.3** |
 |---|---|---|
-| Long replies, error rate (150 replies, zh / en / ja) | 1.78% (1.03 / 1.32 / 2.99) | **1.51% (0.97 / 0.71 / 2.86)** |
-| Voice similarity to an unseen reference speaker | 0.33 | **0.52** |
+| GPUs | 2 × 80 GB | **1 × 80 GB** |
+| First audio, one user | ~1 s | **~0.25 s** |
+| Recommended users per GPU | 4–5 | **16** (first audio 0.44 s median, 0.56 s P90) |
+| NVV-SuperBench, en / zh | 0.60 / 0.77 | **0.75 / 0.85** |
 
-The previous weights stay in [Sophon-Realtime-v1](https://huggingface.co/adventists-ai/Sophon-Realtime-v1).
+Measured from a fresh install on one H100; see [docs/deploy.md](docs/deploy.md#performance-one-h100-80-gb-measured-from-a-fresh-install) for the full table. This build speaks Chinese and English with one built-in voice. The preview weights stay available as tag `v1.1.0` of the weight repositories (use them with code tag `v1.1.2`), and the first release in [Sophon-Realtime-v1](https://huggingface.co/adventists-ai/Sophon-Realtime-v1).
 
 ## Fine-tuning
 

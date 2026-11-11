@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install Sophon-Realtime v1 (Expressive) into two virtual environments next to this repository:
+# Install the Sophon-Realtime E2E build into two virtual environments next to this repository:
 #   .venv-thinker  vLLM 0.29 + duplexjev-vllm   (the thinker)
 #   .venv-engine   speaking engine + gateway
 # and download the model to MODEL_DIR (default ./Sophon-Realtime-32B-E2E).

@@ -19,8 +19,12 @@ def tag_adapter_dir() -> str:
     return os.environ.get("SOPHON_REPLY_LORA") or os.path.join(model_dir(), "adapters", "tag")
 
 
-def talker_weights() -> str:
+def talker_weights() -> str:   # 32B talker of the two-GPU build (weights tagged v1.1.0 and earlier)
     return os.path.join(model_dir(), "talker", "model.safetensors")
+
+
+def talker_dir() -> str:       # talker of the single-GPU build
+    return os.path.join(model_dir(), "talker220")
 
 
 def e2_dir() -> str:

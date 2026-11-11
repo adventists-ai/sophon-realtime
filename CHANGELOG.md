@@ -1,8 +1,21 @@
 # Changelog
 
-One version number for the whole Sophon-Realtime v1 family: the code in this repository (Tag, Flash, Live), the weights on Hugging Face /
+One version number for the whole Sophon-Realtime v1 family: the code in this repository (Tag, Flash, E2E, Live), the weights on Hugging Face /
 ModelScope (git tags with the same name) and the `sophon-realtime` package on PyPI. Each entry says which builds changed.
 Second digit: new features or new weights; third digit: fixes only.
+
+## 1.1.3 (2026-11-11): E2E out of preview, on one GPU
+
+- **E2E is no longer a research preview and now runs on one 80 GB GPU** (it needed two). New talker (about 350M parameters) that reads the tagged reply and generates continuous voice vectors directly, a 2-step decoder, and a new speaking engine that batches every conversation in one loop. The thinker and the speaking engine share the GPU through CUDA MPS, which `scripts/start.sh` starts and `scripts/stop.sh` stops.
+- Measured from a fresh install on one H100 (spoken question in, spoken answer out): first audio for one user about 0.25 s (was about 1 s); 16 users arriving within 10 s get first audio in 0.44 s median / 0.56 s P90 with no reply falling more than 0.3 s behind playback (the preview was recommended for 4–5 users on its own GPU). Full table, including 24 and 32 users and sustained multi-turn load, in [docs/deploy.md](docs/deploy.md).
+- NVV-SuperBench (official prompts and metric, Gemini 3 Flash judge): English 0.75, Chinese 0.85 (preview: 0.60 / 0.77).
+- Sound tags of the E2E talker: `[laughter]`, `[cough]`, `[sigh]`, `[breath]`, `<strong>…</strong>` and `<laughter>…</laughter>` (speaking while laughing). It also accepts `[cry]`, `[clear]` and `[gasp]`; these three are not benchmarked yet and the thinker does not write them on its own.
+- Length guards: one reply is at most about 4.6 minutes of speech (about 960 text tokens). A longer reply ends cleanly there; an error in one conversation no longer affects the others. Tested with 4,000 characters without punctuation, in Chinese and English, next to normal requests.
+- E2E weights updated on Hugging Face and ModelScope (tagged `v1.1.3`): new `talker220/`, `talker/` removed (the download is about 8 GB smaller). `base/`, `adapters/`, `e2/` and `voices/` are unchanged. The preview weights stay at tag `v1.1.0`; use them with code tag `v1.1.2`.
+- `scripts/start.sh` changed: `GPU=0` instead of `THINKER_GPU` / `TALKER_GPU`; new `SLOTS`, `MPS`, `THINKER_MEM`.
+- Fix: `scripts/install.sh` failed on a clean machine because the constraint files pinned `setuptools` and `pip` to versions that conflict with vLLM 0.29. The pins are removed.
+- This E2E build speaks Chinese and English with one built-in voice; voice cloning stays in Tag and Flash.
+- Tag, Flash and Live are unchanged; `sophon-realtime` on PyPI stays at 1.1.2.
 
 ## 1.1.2 (2026-11-11): `sophon-realtime serve` uses CUDA MPS
 

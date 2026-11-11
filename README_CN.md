@@ -40,9 +40,9 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 - **副语言理解 48.6，综合第一：听得懂语气。** 在 LISTEN、StressTest、MSPB 公开基准上高于 Gemini 3.8 Flash（46.9）和 Qwen3-Omni（44.6）。它直接从声音里听出情绪、重音、反讽、笑声和叹气。它的耳朵是我们开源的语音决策模型 [DuplexJev](https://github.com/adventists-ai/duplexjev/blob/main/README_CN.md)。
 - **NVV-SuperBench：Tag 版中文 0.86、英文 0.80，说得出语气。** 什么时候笑、叹气、换气、清嗓子，由模型根据对话自己决定；声音把这些标记演出来，不会把标签念出来。
 - **会说你的语言：中文、英文和五种欧洲语言，更多语言陆续加入。** 意大利语、德语、西班牙语、法语、葡萄牙语开箱即用，日语和俄语可用 Flash 版，韩语是下一个。详见[多语言](#多语言)。
-- **快：Flash 版首包 0.31 秒。** 你说话的全程它都在听，回复边听边起草；你插话，它马上停下，回答你的新问题。
+- **快：E2E 版首包约 0.25 秒，Flash 版 0.31 秒。** 你说话的全程它都在听，回复边听边起草；你插话，它马上停下，回答你的新问题。
 - **Full-Duplex-Bench v3 工具调用 Pass@1 48%，高于 Grok（43%）；接话成功率 100%：能干活。** 支持 [Live 模式](live/README_CN.md)，可以和后端大模型联合工作；兼容 OpenAI GPT-Live 的接口格式。每句回答都有文字记录，可以审计。
-- **一张 80 GB 显卡、一条命令（Tag 和 Flash）。** 基于 vLLM-Omni 部署，单卡建议并发 Tag 16 路、Flash 40 路。代码和权重都是 Apache-2.0，可以商用。
+- **三个版本都只要一张 80 GB 显卡、一条命令。** Tag 和 Flash 基于 vLLM-Omni 部署；单卡建议并发 Tag、E2E 16 路，Flash 40 路。代码和权重都是 Apache-2.0，可以商用。
 
 <p align="center">
   <img src="docs/assets/bench/voicebench_zh.png" width="49%" alt="VoiceBench 总分，全双工模型">
@@ -61,6 +61,7 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 ## 最新进展
 
 - **2026-11-11 · v1.1：零样本声音克隆**，Tag 版和 Flash 版均已支持。几秒钟的录音，就能用这个声音和你实时对话。[看演示视频](#零样本声音克隆v11-新增)
+- **2026-11-11 · 1.1.3：E2E 版转为正式版，单卡即可运行。** 新的说话头，单路首包约 0.25 秒，一张 80 GB 显卡 16 路并发，NVV-SuperBench 英文 0.75 / 中文 0.85。[详情](#e2e)
 - **2026-11-11 · 1.1.2：** `sophon-realtime serve` 默认开启 CUDA MPS；修复长回复和冷启动问题，详见[更新记录](CHANGELOG.md)。
 - **2026-11-08 · v1.0：** Tag、Flash、E2E（预览）三个版本首次开源发布。
 
@@ -68,16 +69,16 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 
 三个版本的大脑完全相同：同一个 32B 模型负责听你说话、判断你说完没有、写出回复。区别只在于**回复怎么变成声音**。
 
-| | **Tag**（推荐） | **Flash** | **E2E**（预览） |
+| | **Tag**（推荐） | **Flash** | **E2E** |
 |---|---|---|---|
-| 怎么出声 | 大脑写出带声音标签的回复（`[laughter]`、`[sigh]`、`<strong>…</strong>` 等），由一个擅长表演的语音模型演出来 | 同样是带标签的回复，交给更轻、更快的语音模型来说（每 80 ms 一帧，一次前向） | 不用单独的语音模型：32B 模型内部的说话头把回复直接变成连续的声音向量，再由解码器还原成声音 |
-| 适合 | 表现力优先：陪伴、角色、演示 | 速度和并发优先：客服、车机、一张卡服务很多人 | 端到端表达的研究 |
-| 非语言声音（NVV-SuperBench，英 / 中） | **0.80 / 0.86** | 0.63 / 0.77 | 0.60 / 0.77 |
-| 单路首包 | 约 0.6 s | **0.31 s** | 约 1 s |
-| 每张 80 GB 卡建议并发 | 16 路 | **40 路** | 4–5 路（说话引擎） |
-| 零样本音色克隆 | **支持**，3–10 秒参考音（[用法](tag/README_CN.md#零样本音色克隆)） | **支持**，3–10 秒参考音（[用法](flash/README_CN.md#零样本音色克隆)） | 暂不支持 |
-| 显卡 | **1** × 80 GB | **1** × 80 GB | 2 × 80 GB |
-| 部署 | vLLM-Omni，一条命令 | vLLM-Omni，一条命令 | 自研引擎 |
+| 怎么出声 | 大脑写出带声音标签的回复（`[laughter]`、`[sigh]`、`<strong>…</strong>` 等），由一个擅长表演的语音模型演出来 | 同样是带标签的回复，交给更轻、更快的语音模型来说（每 80 ms 一帧，一次前向） | 不经过语音 token：一个小巧的说话头（约 3.5 亿参数）边读带标签的回复，边直接生成连续的声音向量，再由解码器还原成声音 |
+| 适合 | 表现力优先：陪伴、角色、演示 | 速度和并发优先：客服、车机、一张卡服务很多人 | 既要表现力、又要最快的首包；自研引擎，方便改动 |
+| 非语言声音（NVV-SuperBench，英 / 中） | **0.80 / 0.86** | 0.63 / 0.77 | 0.75 / 0.85 |
+| 单路首包 | 约 0.6 s | 0.31 s | **约 0.25 s** |
+| 每张 80 GB 卡建议并发 | 16 路 | **40 路** | 16 路 |
+| 零样本音色克隆 | **支持**，3–10 秒参考音（[用法](tag/README_CN.md#零样本音色克隆)） | **支持**，3–10 秒参考音（[用法](flash/README_CN.md#零样本音色克隆)） | 不支持 |
+| 显卡 | **1** × 80 GB | **1** × 80 GB | **1** × 80 GB |
+| 部署 | vLLM-Omni，一条命令 | vLLM-Omni，一条命令 | 自研引擎，一条命令 |
 | 权重 | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) |
 | 代码 | [`tag/`](tag/README_CN.md) | [`flash/`](flash/README_CN.md) | [`docs/deploy_CN.md`](docs/deploy_CN.md) |
 
@@ -172,18 +173,20 @@ https://github.com/user-attachments/assets/7f0627b0-fae4-4633-b412-88cb24942ab8
 
 </details>
 
-## E2E（预览）
+## E2E
 
-E2E 版不用单独的语音模型。32B 模型在听的时候会形成一串连续向量，里面既有说了什么，也有怎么说的；E2E 的说话头用同一种向量语言写出回复，再由解码器还原成声音，听和说用的是同一种表示。它需要两张 80 GB 显卡、使用我们的自研引擎（[docs/deploy_CN.md](docs/deploy_CN.md)）。权重：[魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E)。
+E2E 版中间不经过语音 token。一个小巧的说话头（约 3.5 亿参数）在大脑还在写回复的时候就开始读，边读边生成连续的声音向量（每秒 12.5 帧），再由 2 步解码器和声码器还原成 24 kHz 音频。笑、咳嗽、叹气、呼吸和重读都由说话头自己在同一条流里发出来。整套系统跑在**一张 80 GB 显卡**上，使用我们的自研引擎：[docs/deploy_CN.md](docs/deploy_CN.md)。权重：[魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E)。
 
-**新版（2026-11）：解码器换代，4 步出声。** 每块音频的计算量与旧版相同。同一说话头的回复上：
+**1.1.3 新增：转为正式版。** 新的说话头、新的引擎，从两张卡变成一张卡：
 
-| | 旧解码器 | 新解码器 |
+| | E2E 预览版（1.0 – 1.1.2） | **E2E 1.1.3** |
 |---|---|---|
-| 长回复错字率（150 条，中 / 英 / 日） | 1.78%（1.03 / 1.32 / 2.99） | **1.51%（0.97 / 0.71 / 2.86）** |
-| 未见说话人参考音色的相似度 | 0.33 | **0.52** |
+| 显卡 | 2 × 80 GB | **1 × 80 GB** |
+| 单路首包 | 约 1 秒 | **约 0.25 秒** |
+| 每张卡建议并发 | 4–5 路 | **16 路**（首包中位数 0.44 秒，P90 0.56 秒） |
+| NVV-SuperBench，英 / 中 | 0.60 / 0.77 | **0.75 / 0.85** |
 
-旧版权重仍保留在 [Sophon-Realtime-v1](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-v1)。
+以上为单张 H100 上全新安装后的实测，完整表格见 [docs/deploy_CN.md](docs/deploy_CN.md)。这一版用一个内置音色说中文和英文。预览版权重保留在权重仓库的 `v1.1.0` 标签下（配合代码标签 `v1.1.2` 使用），最早的版本在 [Sophon-Realtime-v1](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-v1)。
 
 ## 微调
 

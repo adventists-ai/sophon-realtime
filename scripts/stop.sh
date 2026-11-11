@@ -7,3 +7,4 @@ for n in gateway talker thinker; do
     p=$(cat "$f"); kill "$p" 2>/dev/null && echo "stopped $n ($p)"; pkill -P "$p" 2>/dev/null; rm -f "$f"
   fi
 done
+if [ -d "$LOG/mps/pipe" ]; then sleep 5; CUDA_MPS_PIPE_DIRECTORY="$LOG/mps/pipe" bash -c 'echo quit | nvidia-cuda-mps-control' 2>/dev/null && echo "stopped CUDA MPS"; fi

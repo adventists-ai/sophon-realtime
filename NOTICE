@@ -7,6 +7,18 @@ See the NOTICE file of each build for details:
 - tag/NOTICE   (Sophon-Realtime-32B-Tag)
 - flash/NOTICE (Sophon-Realtime-32B-Flash)
 
+Sophon-Realtime-32B-E2E (docs/deploy.md) downloads model weights derived from the following works, each licensed under the
+Apache License 2.0:
+- base/ and adapters/: derived from Qwen3-VL-32B-Instruct by the Qwen team, Alibaba
+  (https://huggingface.co/Qwen/Qwen3-VL-32B-Instruct), via DuplexJev-32B-Para (Adventists.ai). The audio encoder is derived from
+  Qwen3-ASR (Qwen team, Alibaba).
+- talker220/: the talker (model.safetensors) is by Adventists.ai. Its text embedding table (embed.safetensors) and tokenizer are
+  taken from DuplexJev-4B-Para (Adventists.ai), which is derived from Qwen3-4B by the Qwen team, Alibaba
+  (https://huggingface.co/Qwen/Qwen3-4B).
+- e2/: the decoder is derived from the flow model of Fun-CosyVoice3-0.5B by the FunAudioLLM team, Alibaba
+  (https://github.com/FunAudioLLM/CosyVoice), distilled to a few steps with our own input adapter; the HiFT vocoder comes from
+  the same work.
+
 Third-party code:
 - sophon_expressive/cosyvoice_lite/ and sophon_expressive/hift_abs.py include code adapted from CosyVoice
   (FunAudioLLM team, Alibaba; https://github.com/FunAudioLLM/CosyVoice; Apache License 2.0).
