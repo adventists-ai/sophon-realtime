@@ -60,10 +60,7 @@ python client_example.py --wav my_question.wav --lang en --voice alice
 - The clip may be in another language than the reply (cross-lingual). Set `SOPHON_VOICES=/path/to/dir` to keep voices outside `model/`.
 - Lookup order is `<voice>_<language>`, then `<voice>`, so `alice_zh.wav` + `alice_en.wav` can give one voice a different clip per language. An unknown
   or unreadable voice falls back to `chelsie` with a warning in the server log.
-- Similarity on 80 unseen speakers (CN-Celeb + VoxCeleb, noisy clips, 8 s references, CAM++ cosine): **0.40** (the same person on another
-  recording: 0.59; two different people: about 0.10). It captures gender, pitch and timbre well; close friends
-  will still hear that it is not the real person.
-- Only clone voices you have permission to use.
+- **Only clone your own voice or a voice you have permission to use. Do not use it to impersonate or deceive anyone.**
 
 ## API
 - `/v1/chat/completions`: use the system prompt in `config/system_prompt.json` (the model was tuned with it; without it fewer tags are written); put the

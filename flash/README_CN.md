@@ -58,9 +58,7 @@ python client_example.py --wav 我的问题.wav --lang zh --voice alice
 - 参考音的语言可以和回复不同（跨语言）。想把音色放在 `model/` 以外，设 `SOPHON_VOICES=/路径`。
 - 查找顺序：`<音色>_<语言>` → `<音色>`，所以可以用 `alice_zh.wav` + `alice_en.wav` 给中英文各配一段参考音。找不到或读不了的音色会回落到
   `chelsie`，服务日志里有警告。
-- 效果（80 位未见说话人，CN-Celeb + VoxCeleb，录音较嘈杂，参考音 8 秒，CAM++ 余弦相似度）：**0.40**（同一个人换一段录音 0.59，
-  两个不同的人约 0.10）。性别、音高、音色质感都能还原；熟人仍能听出不是本人。
-- 只克隆你有权使用的声音。
+- **只克隆你本人或已获授权的声音，不得用于冒充他人或欺诈。**
 
 ## 接口说明
 - `/v1/chat/completions`：系统提示请用 `config/system_prompt.json` 里的（模型按它调过，不带会少写标签）；用户语音放 `input_audio`；
