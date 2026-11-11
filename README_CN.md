@@ -69,6 +69,7 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 | 非语言声音（NVV-SuperBench，英 / 中） | **0.80 / 0.86** | 0.63 / 0.77 | 0.60 / 0.77 |
 | 单路首包 | 约 0.6 s | **0.31 s** | 约 1 s |
 | 每张 80 GB 卡建议并发 | 16 路 | **40 路** | 4–5 路（说话引擎） |
+| 零样本音色克隆 | 下一版 | **支持**，3–10 秒参考音（[用法](flash/README_CN.md#零样本音色克隆)） | 暂不支持 |
 | 显卡 | **1** × 80 GB | **1** × 80 GB | 2 × 80 GB |
 | 部署 | vLLM-Omni，一条命令 | vLLM-Omni，一条命令 | 自研引擎 |
 | 权重 | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) |

@@ -44,6 +44,27 @@ bash stop.sh
 
 Voices: `chelsie` (default), `brand`; set `language` to `zh` or `en`.
 
+## Zero-shot voice cloning
+
+Give the server a short clip of the voice you want and use its name like any built-in voice. No fine-tuning, no restart.
+
+```bash
+cp alice.wav model/voices/alice.wav   # 3-10 s of clean speech from one speaker (wav or flac, any sample rate)
+python client_example.py --wav my_question.wav --lang en --voice alice
+```
+
+- The voice stage turns the clip into a speaker embedding (the Qwen3-TTS x-vector) the first time the voice is used and caches it. To replace a voice,
+  overwrite the file; to remove it, delete the file. Both take effect on the next request. Voice names are lower case (`a-z 0-9 _ - .`).
+- Works with `/v1/chat/completions` (`"voice": "alice"`) and `/v1/realtime` (`session.update` → `"voice": "alice"`). First audio is as fast as
+  with a built-in voice. Sound tags still work.
+- The clip may be in another language than the reply (cross-lingual). Set `SOPHON_VOICES=/path/to/dir` to keep voices outside `model/`.
+- Lookup order is `<voice>_<language>`, then `<voice>`, so `alice_zh.wav` + `alice_en.wav` can give one voice a different clip per language. An unknown
+  or unreadable voice falls back to `chelsie` with a warning in the server log.
+- Similarity on 80 unseen speakers (CN-Celeb + VoxCeleb, noisy clips, 8 s references, CAM++ cosine): **0.40**, vs 0.42 for the original
+  Qwen3-TTS-1.7B-Base x-vector cloning and 0.59 for the same person on another recording. It captures gender, pitch and timbre well; close friends
+  will still hear that it is not the real person.
+- Only clone voices you have permission to use.
+
 ## API
 - `/v1/chat/completions`: use the system prompt in `config/system_prompt.json` (the model was tuned with it; without it fewer tags are written); put the
   user's speech in `input_audio`; `"modalities": ["text","audio"]`, optional `"voice"` and `"language"`. The text stream keeps the tags (strip them for

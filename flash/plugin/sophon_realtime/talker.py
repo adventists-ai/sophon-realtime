@@ -1,9 +1,14 @@
 """Qwen3-TTS talker (vLLM-Omni implementation) + streaming text input.
 Text is not given all at once: each token the thinker writes is sent over (cumulative list ids.output); newly arrived tokens are projected and appended to the tail of trailing_text,
 and a tts_eos is appended once the thinker finishes -- after that the original frame-by-frame text-reading decode logic is reused as-is (official streaming layout: the prefix contains only the first text token).
-Voices: voices/<name>.pt (x-vector computed by the Base model's speaker encoder), looked up in the order "<voice>_<lang>" -> "<voice>"."""
+Voices: voices/<name>.pt (x-vector computed by the Base model's speaker encoder) or voices/<name>.wav / .flac (zero-shot clone: a 3-10 s
+reference clip; its x-vector is computed by the same speaker encoder on first use), looked up in the order "<voice>_<lang>" -> "<voice>".
+Files are re-read when they change, so voices can be added, replaced or deleted while the server runs."""
 import os
+import re
 from typing import Any
+
+import numpy as np
 
 import torch
 from vllm.logger import init_logger
@@ -14,6 +19,8 @@ LANG = {"zh": "chinese", "en": "english", "ja": "japanese", "ko": "korean", "de"
         "it": "italian", "pt": "portuguese", "ru": "russian"}
 ROLE = [151644, 77091, 198]          # "<|im_start|>assistant\n"
 PROMPT_LEN = 10                      # 3 role + 6 codec prefix + 1 (first text token)
+_VOICE_NAME = re.compile(r"[a-z0-9][a-z0-9_.-]{0,63}")
+MAX_REF_S = float(os.environ.get("SOPHON_MAX_REF_SECONDS", "15"))   # longer reference clips are cut
 FRAMES_PER_TOK = int(os.environ.get("SOPHON_FRAMES_PER_TOKEN", "12"))  # runaway guard: total frame cap ~= 12 frames/text token + 60
 
 
@@ -36,7 +43,9 @@ class SophonTTSTalker(Qwen3TTSTalkerForConditionalGeneration):
         super().__init__(vllm_config=vllm_config, prefix=prefix)
         root = os.path.dirname(os.path.abspath(str(self.model_path).rstrip("/")))
         self._voice_dir = os.environ.get("SOPHON_VOICES") or os.path.join(root, "voices")
-        self._voices: dict[str, torch.Tensor] = {}
+        self._voices: dict[str, tuple[torch.Tensor, tuple[str, float]]] = {}
+        self._missing: set[str] = set()
+        self._bad: set[tuple[str, float]] = set()
         self._force_eos: set[str] = set()
         logger.info("SophonTTSTalker voices dir: %s (%s)", self._voice_dir,
                     sorted(os.listdir(self._voice_dir)) if os.path.isdir(self._voice_dir) else "missing")
@@ -52,14 +61,45 @@ class SophonTTSTalker(Qwen3TTSTalkerForConditionalGeneration):
 
     def _voice(self, voice: str, lang: str, device) -> torch.Tensor:
         voice = (voice or "chelsie").lower().strip()
-        for name in (f"{voice}_{lang}", voice, f"chelsie_{lang}", "chelsie_zh"):
-            if name in self._voices:
-                return self._voices[name].to(device)
-            p = os.path.join(self._voice_dir, f"{name}.pt")
-            if os.path.exists(p):
-                self._voices[name] = torch.load(p, map_location="cpu").reshape(1, -1).to(self._embedding_dtype)
-                return self._voices[name].to(device)
+        if not _VOICE_NAME.fullmatch(voice):      # voice names come from clients: no paths
+            voice = "chelsie"
+        names = (f"{voice}_{lang}", voice, f"chelsie_{lang}", "chelsie_zh")
+        for i, name in enumerate(names):
+            for ext in (".pt", ".wav", ".flac"):
+                p = os.path.join(self._voice_dir, name + ext)
+                try:
+                    mt = os.path.getmtime(p)
+                except OSError:
+                    continue
+                hit = self._voices.get(name)
+                if hit is None or hit[1] != (p, mt):
+                    if (p, mt) in self._bad:
+                        continue
+                    try:
+                        hit = self._voices[name] = (self._load_voice(p, ext), (p, mt))
+                    except Exception as e:  # noqa: BLE001  -- a bad voice file must not take the stage down
+                        self._bad.add((p, mt))
+                        logger.error("sophon_realtime: cannot load voice %s: %s", p, e)
+                        continue
+                if i >= 2 and voice not in ("chelsie", f"chelsie_{lang}") and voice not in self._missing:
+                    self._missing.add(voice)
+                    logger.warning("sophon_realtime: voice %r not found in %s, using %s", voice, self._voice_dir, name)
+                return hit[0].to(device)
         raise ValueError(f"sophon_realtime: voice {voice!r} not found in {self._voice_dir}")
+
+    def _load_voice(self, path: str, ext: str) -> torch.Tensor:
+        if ext == ".pt":
+            v = torch.load(path, map_location="cpu", weights_only=True)
+        else:   # zero-shot clone from a reference clip: same speaker encoder + mel as the official Qwen3-TTS x-vector mode
+            import soundfile as sf
+            wav, sr = sf.read(path, dtype="float32", always_2d=True)
+            wav = np.ascontiguousarray(wav.mean(1)[: int(sr * MAX_REF_S)])
+            if len(wav) < sr * 1.0:
+                raise ValueError(f"sophon_realtime: reference clip {path} is shorter than 1 s")
+            with torch.no_grad():
+                v = self._prompt_builder.extract_speaker_embedding(wav, int(sr))
+            logger.info("sophon_realtime: cloned voice from %s (%.1f s)", path, len(wav) / sr)
+        return v.detach().reshape(1, -1).to(self._embedding_dtype).cpu()
 
     @staticmethod
     def _ids(info) -> list[int]:

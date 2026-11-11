@@ -69,6 +69,7 @@ All three builds share the same brain: one 32B model that listens to your voice,
 | Non-verbal sounds (NVV-SuperBench, en / zh) | **0.80 / 0.86** | 0.63 / 0.77 | 0.60 / 0.77 |
 | First audio, one user | ~0.6 s | **0.31 s** | ~1 s |
 | Users per 80 GB GPU (recommended) | 16 | **40** | 4–5 (speaking engine) |
+| Zero-shot voice cloning | next update | **yes**, from a 3–10 s clip ([how](flash/README.md#zero-shot-voice-cloning)) | not yet |
 | GPUs | **1** × 80 GB | **1** × 80 GB | 2 × 80 GB |
 | Serving | vLLM-Omni, one command | vLLM-Omni, one command | own engine |
 | Weights | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) |

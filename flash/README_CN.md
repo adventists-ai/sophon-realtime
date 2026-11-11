@@ -43,6 +43,25 @@ bash stop.sh
 
 音色：`chelsie`（默认）、`brand`；语言用 `language` 指定（`zh` / `en`）。
 
+## 零样本音色克隆
+
+给一段想要的声音，起个名字，就能像内置音色一样使用。不用微调，不用重启。
+
+```bash
+cp alice.wav model/voices/alice.wav   # 同一个人 3–10 秒的干净语音（wav 或 flac，采样率不限）
+python client_example.py --wav 我的问题.wav --lang zh --voice alice
+```
+
+- 第一次用到该音色时，说话段用同一个声纹编码器（Qwen3-TTS x-vector）算出音色向量并缓存。换音色直接覆盖文件，删音色直接删文件，下一个请求生效。音色名用小写（`a-z 0-9 _ - .`）。
+- `/v1/chat/completions`（`"voice": "alice"`）和 `/v1/realtime`（`session.update` 里 `"voice": "alice"`）都支持；首包延迟与内置音色相同；
+  声音标签照常生效。
+- 参考音的语言可以和回复不同（跨语言）。想把音色放在 `model/` 以外，设 `SOPHON_VOICES=/路径`。
+- 查找顺序：`<音色>_<语言>` → `<音色>`，所以可以用 `alice_zh.wav` + `alice_en.wav` 给中英文各配一段参考音。找不到或读不了的音色会回落到
+  `chelsie`，服务日志里有警告。
+- 效果（80 位未见说话人，CN-Celeb + VoxCeleb，录音较嘈杂，参考音 8 秒，CAM++ 余弦相似度）：**0.40**；原版 Qwen3-TTS-1.7B-Base 的
+  x-vector 克隆 0.42；同一个人换一段录音 0.59。性别、音高、音色质感都能还原；熟人仍能听出不是本人。
+- 只克隆你有权使用的声音。
+
 ## 接口说明
 - `/v1/chat/completions`：系统提示请用 `config/system_prompt.json` 里的（模型按它调过，不带会少写标签）；用户语音放 `input_audio`；
   `"modalities": ["text","audio"]`，可选 `"voice"`、`"language"`。文字流保留标签（显示时可自行去掉）；音频流为 base64 WAV 块（24 kHz）。
