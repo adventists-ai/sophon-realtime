@@ -94,6 +94,9 @@ class SophonTagTalker(CosyVoice3Model):
             tok = get_qwen_tokenizer(os.path.join(self.model_dir, self.config.qwen_pretrain_path), skip_special_tokens=True, version="cosyvoice3")
             self._prompt_ids = tok.encode(LM_PROMPT, allowed_special="all")
             logger.info("SophonTagTalker: LM prompt %d tokens (prefill span %d); voices dir %s", len(self._prompt_ids), len(self._prompt_ids) + 1, self._voice_dir)
+            if os.environ.get("SOPHON_VOICE_SCAN", "1") == "1":     # clip voices (voices/<name>.wav) are prepared in the background
+                from . import voices
+                voices.start_background(self._voice_dir, str(self.model_dir), log=logger)
         if self.model_stage == "cosyvoice3_code2wav":
             self.has_preprocess = False          # only the talker stage rewrites its inputs
             self._patch_flow()
@@ -212,20 +215,13 @@ class SophonTagTalker(CosyVoice3Model):
         logger.info("SophonTagTalker code2wav: flow steps %d, cfg %s, onnx %s", FLOW_STEPS, FLOW_CFG or "model default", os.environ.get("SOPHON_FLOW_ONNX", "stock"))
 
     # ------------------------------------------------------------------ helpers
-    def _voice(self, name: str | None, lang: str) -> dict:
-        name = (name or "").lower().strip()
-        cands = [name, f"{name}_{lang}", f"chelsie_{lang}", "vivian_zh" if lang == "zh" else "ryan_en", "vivian_zh"]
-        for n in cands:
-            if not n:
-                continue
-            if n in self._voices:
-                return self._voices[n]
-            p = os.path.join(self._voice_dir, f"{n}.pt")
-            if os.path.exists(p):
-                d = torch.load(p, map_location="cpu")
-                self._voices[n] = d
-                return d
-        raise ValueError(f"sophon tag talker: voice {name!r} not found in {self._voice_dir}")
+    def _voice(self, name: str | None, lang: str) -> str:
+        """Name of the voice this request will use (the conditioning itself is attached by proc.talker2code2wav_async_chunk)."""
+        from . import voices
+        for n in voices.candidates(str(name or ""), lang):
+            if any(os.path.exists(os.path.join(self._voice_dir, n + e)) for e in voices.EXTS):
+                return n
+        raise ValueError(f"sophon tag talker: no voice found in {self._voice_dir}")
 
     def _semb(self, ids) -> torch.Tensor:
         w = self.model.speech_embedding.weight

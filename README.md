@@ -69,7 +69,7 @@ All three builds share the same brain: one 32B model that listens to your voice,
 | Non-verbal sounds (NVV-SuperBench, en / zh) | **0.80 / 0.86** | 0.63 / 0.77 | 0.60 / 0.77 |
 | First audio, one user | ~0.6 s | **0.31 s** | ~1 s |
 | Users per 80 GB GPU (recommended) | 16 | **40** | 4–5 (speaking engine) |
-| Zero-shot voice cloning | next update | **yes**, from a 3–10 s clip ([how](flash/README.md#zero-shot-voice-cloning)) | not yet |
+| Zero-shot voice cloning | **yes**, from a 3–10 s clip ([how](tag/README.md#zero-shot-voice-cloning)) | **yes**, from a 3–10 s clip ([how](flash/README.md#zero-shot-voice-cloning)) | not yet |
 | GPUs | **1** × 80 GB | **1** × 80 GB | 2 × 80 GB |
 | Serving | vLLM-Omni, one command | vLLM-Omni, one command | own engine |
 | Weights | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) |
@@ -102,9 +102,12 @@ Talk to it in your own language. Sophon-Realtime listens and answers in the lang
 **Quickest** (Tag build, one 80 GB GPU):
 
 ```bash
-pip install sophon-realtime     # Python 3.12, Linux, CUDA; installs vLLM-Omni and the Tag plugin
+pip install "sophon-realtime[trt]"   # Python 3.12, Linux, CUDA 13; installs vLLM-Omni, the Tag plugin and TensorRT
 sophon-realtime serve           # downloads Sophon-Realtime-32B-Tag (~42 GB) on first run, then serves on port 8000
 ```
+
+> **Keep the `[trt]`.** Without TensorRT the voice runs in plain PyTorch and is about 3× slower under load (16 users: first audio ~2.4 s
+> instead of ~0.75 s, with 1–1.5 s of stutter). `sophon-realtime serve` now warns at start-up when TensorRT is missing.
 
 Or use the one-command scripts, which set up an isolated environment:
 

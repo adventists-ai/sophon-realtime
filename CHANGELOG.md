@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-11 (v1.3.1): Tag voice cloning, new voice model, TensorRT warning
+
+- Tag: zero-shot voice cloning ([#2](https://github.com/adventists-ai/sophon-realtime/issues/2)). Put a 3-10 s clip at `model/voices/<name>.wav` and use `"voice": "<name>"` in `/v1/chat/completions` or `/v1/realtime`; no fine-tuning or restart. New clips are prepared in the background (the voices folder is scanned every 5 s), so first audio is as fast as with a built-in voice. Unknown or unreadable voices fall back to `chelsie` with a warning. See [tag/README.md](tag/README.md#zero-shot-voice-cloning). Tag plugin 0.4.0.
+- Tag weights v1.3.1 on Hugging Face and ModelScope: new `talker/flow.pt` and `talker/flow.decoder.estimator.fp32.onnx`. Unseen voices sound much closer to the reference; built-in voices, sound tags, intelligibility and speed are unchanged. The TensorRT engine is rebuilt automatically on the first start after the update.
+- **TensorRT matters.** `pip install sophon-realtime` without `[trt]` runs the voice in plain PyTorch, about 3x slower under load (16 users: first audio ~2.4 s instead of ~0.75 s). The README now says `pip install "sophon-realtime[trt]"`, and `sophon-realtime serve` warns at start-up when TensorRT is missing.
+- `sophon-realtime` 1.0.5 on PyPI with these changes.
+
 ## 2026-11-11 (hardening): sophon-realtime 1.0.4
 
 - Tag build, a hard guard that does not depend on segmenting: the flow decoder now only sees the last part of a long request (at most 2,800 mel frames with the prompt, `SOPHON_FLOW_MAX_FRAMES`; at least 50 tokens of context before the new audio, `SOPHON_FLOW_CTX_TOKENS`). If a flow call still fails, only that request loses that audio chunk; the stage and the other sessions keep running.

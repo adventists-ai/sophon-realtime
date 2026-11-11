@@ -69,7 +69,7 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 | 非语言声音（NVV-SuperBench，英 / 中） | **0.80 / 0.86** | 0.63 / 0.77 | 0.60 / 0.77 |
 | 单路首包 | 约 0.6 s | **0.31 s** | 约 1 s |
 | 每张 80 GB 卡建议并发 | 16 路 | **40 路** | 4–5 路（说话引擎） |
-| 零样本音色克隆 | 下一版 | **支持**，3–10 秒参考音（[用法](flash/README_CN.md#零样本音色克隆)） | 暂不支持 |
+| 零样本音色克隆 | **支持**，3–10 秒参考音（[用法](tag/README_CN.md#零样本音色克隆)） | **支持**，3–10 秒参考音（[用法](flash/README_CN.md#零样本音色克隆)） | 暂不支持 |
 | 显卡 | **1** × 80 GB | **1** × 80 GB | 2 × 80 GB |
 | 部署 | vLLM-Omni，一条命令 | vLLM-Omni，一条命令 | 自研引擎 |
 | 权重 | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) |
@@ -102,9 +102,12 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 **最快**（Tag 版，一张 80 GB 显卡）：
 
 ```bash
-pip install sophon-realtime     # Python 3.12、Linux、CUDA；会装好 vLLM-Omni 和 Tag 插件
+pip install "sophon-realtime[trt]"   # Python 3.12、Linux、CUDA 13；会装好 vLLM-Omni、Tag 插件和 TensorRT
 sophon-realtime serve           # 首次运行自动下载 Sophon-Realtime-32B-Tag（约 42 GB），然后在 8000 端口提供服务
 ```
+
+> **一定要带 `[trt]`。** 没有 TensorRT 时说话段走纯 PyTorch，高并发下慢约 3 倍（16 路：首包约 2.4 秒，而不是约 0.75 秒，还会卡顿 1–1.5 秒）。
+> 现在 `sophon-realtime serve` 启动时如果没装 TensorRT 会给出警告。
 
 也可以用一键脚本，会建一个独立的虚拟环境：
 

@@ -13,9 +13,12 @@ import re
 import threading
 
 import torch
+from vllm.logger import init_logger
 from .tools import cut_tool
 from vllm_omni.data_entry_keys import IdsStruct, MetaStruct, OmniPayloadStruct
 from vllm_omni.model_executor.stage_input_processors.tts_utils import extract_language_from_request, extract_speaker_from_request
+
+logger = init_logger("vllm_omni.sophon_realtime.proc")
 
 LEAD = int(os.environ.get("SOPHON_LEAD", "5"))
 SEG_HOLD = int(os.environ.get("SOPHON_SEG_HOLD", "40"))          # segmented replies: within this many tokens of the segment limit, hold back text after the last sentence end
@@ -249,29 +252,28 @@ def thinker2talker_async_chunk(transfer_manager, multimodal_output, request, is_
 
 
 # ---------------------------------------------------------------- talker -> code2wav: add the voice prompt once
-_VOICES: dict[str, dict] = {}
 
 
 def _voice_payload(request):
     from vllm_omni.engine.serialization import deserialize_additional_information
+    from . import voices
+    from .env import model_dir
     info = deserialize_additional_information(getattr(request, "additional_information", None))
     info = info if isinstance(info, dict) else {}
     def first(x):
         return x[0] if isinstance(x, (list, tuple)) and x else x
-    name = str(first(info.get("speaker")) or "").lower().strip()
+    name = str(first(info.get("speaker")) or "")
     lang = str(first(info.get("language")) or "zh").lower()[:2]
-    from .env import model_dir
     vdir = os.environ.get("SOPHON_VOICES") or os.path.join(model_dir(), "voices")
-    for n in (name, f"{name}_{lang}", f"chelsie_{lang}", "vivian_zh" if lang == "zh" else "ryan_en", "vivian_zh"):
-        if not n:
-            continue
-        if n not in _VOICES and os.path.exists(os.path.join(vdir, f"{n}.pt")):
-            _VOICES[n] = torch.load(os.path.join(vdir, f"{n}.pt"), map_location="cpu")
-        if n in _VOICES:
-            v = _VOICES[n]
-            return {"embed": {"speech_token": v["speech_token"], "speech_feat": v["speech_feat"], "embedding": v["embedding"],
-                              "speech_token_len": torch.tensor([[v["speech_token"].shape[1]]], dtype=torch.int32)}}
-    raise ValueError(f"sophon tag: voice {name!r} not found in {vdir}")
+    got, v = voices.load(vdir, name, lang, os.path.join(model_dir(), "talker"), log=logger)
+    if name and got not in (name.lower().strip(), f"{name.lower().strip()}_{lang}") and name.lower().strip() not in _MISSING:
+        _MISSING.add(name.lower().strip())
+        logger.warning("sophon tag: voice %r not found in %s, using %s", name, vdir, got)
+    return {"embed": {"speech_token": v["speech_token"], "speech_feat": v["speech_feat"], "embedding": v["embedding"],
+                      "speech_token_len": torch.tensor([[v["speech_token"].shape[1]]], dtype=torch.int32)}}
+
+
+_MISSING: set[str] = set()
 
 
 def talker2code2wav_async_chunk(transfer_manager, multimodal_output, request, is_finished: bool = False):
