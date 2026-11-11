@@ -165,13 +165,18 @@ class SophonTagTalker(CosyVoice3Model):
         # window are dropped), and if the flow still fails, lose that one chunk of one request instead of the stage.
         max_frames = int(os.environ.get("SOPHON_FLOW_MAX_FRAMES", "2800"))
         ctx_tok = int(os.environ.get("SOPHON_FLOW_CTX_TOKENS", "50"))
+        # Bounded left context (streaming decode with a fixed look-back, as vLLM-Omni does for Qwen3-TTS via
+        # codec_left_context_frames): each chunk is decoded from the voice prompt + the last `left_ctx` already-spoken
+        # tokens + the new tokens, so the cost per chunk stays constant instead of growing with the reply. 0 = off.
+        left_ctx = int(os.environ.get("SOPHON_FLOW_LEFT_CTX", "0"))
         ratio = int(getattr(c2w, "token_mel_ratio", 2) or 2)
 
         def window(token, prompt_token, offset):
-            n = int(token.shape[1]); room = max_frames // ratio - int(prompt_token.shape[1])
-            if max_frames <= 0 or n <= room:
-                return token, offset
-            cut = min(n - room, max(0, offset - ctx_tok))
+            n = int(token.shape[1])
+            cut = max(0, offset - left_ctx) if left_ctx > 0 else 0
+            room = max_frames // ratio - int(prompt_token.shape[1])
+            if max_frames > 0 and n - cut > room:
+                cut = max(cut, min(n - room, max(0, offset - ctx_tok)))
             if cut <= 0:
                 return token, offset
             return token[:, cut:], offset - cut
