@@ -157,6 +157,20 @@ class SophonTagTalker(CosyVoice3Model):
             # the stock plan cache key ignores the profile -> keep one cache dir per profile
             os.environ.setdefault("COSYVOICE3_TRT_CACHE", os.path.join(os.path.expanduser("~"), ".cache", "vllm_omni", "cosyvoice3_trt", f"b{rows}-{maxb}" + ("t" if dyn_t else "")))
             logger.info("SophonTagTalker: TensorRT flow profile batch %d..%d (opt %d), cache %s", rows, maxb, optb, os.environ["COSYVOICE3_TRT_CACHE"])
+        fb = getattr(c2w, "forward_streaming_batch", None)
+        if fb is not None and getattr(c2w, "forward_streaming", None) is not None:
+            single = c2w.forward_streaming
+            def batch_safe(items, **kw):
+                try:
+                    return fb(items, **kw)
+                except Exception as e:  # noqa: BLE001
+                    if len(items) <= 1:
+                        raise
+                    logger.error("SophonTagTalker: batched flow failed (%r), running %d requests one by one", e, len(items))
+                    return [single(token=it["token"], prompt_token=it["prompt_token"], prompt_feat=it["prompt_feat"], embedding=it["embedding"],
+                                   cache_state=it.get("cache_state"), n_timesteps=kw.get("n_timesteps", 10),
+                                   token_offset_tokens=int(it.get("token_offset_tokens", 0)), finalize=bool(it.get("finalize", False))) for it in items]
+            c2w.forward_streaming_batch = batch_safe
         for name in ("forward", "forward_streaming", "forward_streaming_batch"):
             fn = getattr(c2w, name, None)
             if fn is None:
