@@ -21,30 +21,6 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
 </p>
 
-## New in v1.1: zero-shot voice cloning
-
-Give Sophon a few seconds of someone's voice and it talks to you in that voice, in real time. No fine-tuning, no restart, one GPU. Works in the Tag and Flash builds.
-
-https://github.com/user-attachments/assets/7f0627b0-fae4-4633-b412-88cb24942ab8
-
-```bash
-pip install -U "sophon-realtime[trt]"
-sophon-realtime download --source modelscope   # or Hugging Face (default)
-cp alice.wav model/voices/                      # 3-10 s, one speaker
-sophon-realtime serve                           # then set "voice": "alice"
-```
-
-New, replaced and deleted voices take effect on the next request. Barge-in, backchannels and laughs still work in a cloned voice, and a voice cloned from one language can speak another. Everything stays on your server ([details](tag/README.md#zero-shot-voice-cloning)). The video also shows [Live mode](live/README.md): Sophon hands lookups (weather, news) to your own backend, keeps talking, then says the answer.
-
-**Please only clone your own voice or voices you have permission to use. Do not use it to impersonate anyone or to deceive.**
-
-<details>
-<summary>Chinese-subtitled version</summary>
-
-https://github.com/user-attachments/assets/74bd6096-b6fc-4433-a1d7-d3e967107193
-
-</details>
-
 ## Demo
 
 Real conversations with Sophon-Realtime, recorded as they happened: no edits, no speed-up. Turn the sound on.
@@ -81,6 +57,12 @@ https://github.com/user-attachments/assets/1d9442ef-84b0-45a3-acd4-2d05a9562397
 </p>
 
 <sub>Self-run unless noted. VoiceBench: official evaluators with a gpt-4o-mini judge; AlpacaEval on the standard 199-question subset. Big Bench Audio: GPT-4.1 judges the transcript of the spoken answer; other models from Artificial Analysis. Full-Duplex-Bench v3: best of several runs; other systems from the FDB v3 paper (Apr 2026). Paralinguistic understanding: same prompts and option rotation for every model. NVV-SuperBench: official prompts and metric, 50 items per class per language, Gemini 3 Flash judge; the three builds speak the same tagged reply texts in the Chelsie voice. Latency and concurrency: one H100 80 GB, users arriving within 10 s.</sub>
+
+## News
+
+- **2026-11-11 · v1.1: zero-shot voice cloning** in the Tag and Flash builds. A few seconds of audio and it talks to you in that voice, in real time. [Watch the demo](#zero-shot-voice-cloning-new-in-v11)
+- **2026-11-11 · 1.1.2:** `sophon-realtime serve` turns on CUDA MPS by default; long-reply and cold-start fixes. See the [changelog](CHANGELOG.md).
+- **2026-11-08 · v1.0:** first public release of the Tag, Flash and E2E (preview) builds.
 
 ## Three builds, one brain
 
@@ -165,6 +147,30 @@ cd sophon-realtime/live && BUILD=tag PORT=8000 LIVE_PORT=8780 bash start_live.sh
 ## Live mode (OpenAI GPT-Live compatible)
 
 [`live/`](live/README.md) is a gateway that speaks the OpenAI GPT-Live protocol in front of a Tag or Flash engine: GPT-Live clients switch by changing the URL and key. Sophon keeps the voice and hands lookups and actions to your backend through delegation, then speaks the result. Optionally, a larger model can run the back office.
+
+## Zero-shot voice cloning (new in v1.1)
+
+Give Sophon a few seconds of someone's voice and it talks to you in that voice, in real time. No fine-tuning, no restart, one GPU. Works in the Tag and Flash builds.
+
+https://github.com/user-attachments/assets/7f0627b0-fae4-4633-b412-88cb24942ab8
+
+```bash
+pip install -U "sophon-realtime[trt]"
+sophon-realtime download --source modelscope   # or Hugging Face (default)
+cp alice.wav model/voices/                      # 3-10 s, one speaker
+sophon-realtime serve                           # then set "voice": "alice"
+```
+
+New, replaced and deleted voices take effect on the next request. Barge-in, backchannels and laughs still work in a cloned voice, and a voice cloned from one language can speak another. Everything stays on your server ([details](tag/README.md#zero-shot-voice-cloning)). The video also shows [Live mode](live/README.md): Sophon hands lookups (weather, news) to your own backend, keeps talking, then says the answer.
+
+**Please only clone your own voice or voices you have permission to use. Do not use it to impersonate anyone or to deceive.**
+
+<details>
+<summary>Chinese-subtitled version</summary>
+
+https://github.com/user-attachments/assets/74bd6096-b6fc-4433-a1d7-d3e967107193
+
+</details>
 
 ## E2E (preview)
 

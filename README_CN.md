@@ -21,30 +21,6 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
 </p>
 
-## v1.1 新增：零样本声音克隆
-
-给智子几秒钟的录音，它就用这个声音和你实时对话。无需微调，无需重启，一张卡。Tag 版和 Flash 版均已支持。
-
-https://github.com/user-attachments/assets/74bd6096-b6fc-4433-a1d7-d3e967107193
-
-```bash
-pip install -U "sophon-realtime[trt]"
-sophon-realtime download --source modelscope
-cp alice.wav model/voices/                      # 3–10 秒，单人录音
-sophon-realtime serve                           # 然后设置 "voice": "alice"
-```
-
-新增、替换、删除声音都在下一次请求生效。克隆的声音照样能被打断、会附和、会笑；用一种语言的录音克隆的声音，也能说另一种语言。录音只留在你自己的服务器上（[详细说明](tag/README_CN.md)）。视频里还演示了 [Live 模式](live/README.md)：查天气、查新闻这类请求交给你自己的后端，智子一边继续聊，拿到结果后再说出来。
-
-**请只克隆自己的声音，或已获得声音主人许可的声音；不得用于冒充他人或欺诈。**
-
-<details>
-<summary>英文原版</summary>
-
-https://github.com/user-attachments/assets/7f0627b0-fae4-4633-b412-88cb24942ab8
-
-</details>
-
 ## 演示
 
 和智子实时语音的真实对话录屏，未剪辑、未加速。记得打开声音。
@@ -81,6 +57,12 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 </p>
 
 <sub>除注明外均为自测。VoiceBench：官方评测脚本，gpt-4o-mini 裁判；AlpacaEval 用标准 199 题子集。Big Bench Audio：GPT-4.1 对语音回答的转写打分，其他模型数据来自 Artificial Analysis。Full-Duplex-Bench v3：多次运行取最好，其他系统数据来自 FDB v3 论文（2026 年 4 月）。副语言理解：所有模型同样的提示词和选项轮换。NVV-SuperBench：官方题目与指标，每类每种语言 50 条，Gemini 3 Flash 裁判；三个版本念同一批带标签的回复文字，同用 Chelsie 音色。延迟和并发：单张 H100 80 GB，用户在 10 秒内陆续接入。</sub>
+
+## 最新进展
+
+- **2026-11-11 · v1.1：零样本声音克隆**，Tag 版和 Flash 版均已支持。几秒钟的录音，就能用这个声音和你实时对话。[看演示视频](#零样本声音克隆v11-新增)
+- **2026-11-11 · 1.1.2：** `sophon-realtime serve` 默认开启 CUDA MPS；修复长回复和冷启动问题，详见[更新记录](CHANGELOG.md)。
+- **2026-11-08 · v1.0：** Tag、Flash、E2E（预览）三个版本首次开源发布。
 
 ## 三个版本，同一个大脑
 
@@ -165,6 +147,30 @@ cd sophon-realtime/live && BUILD=tag PORT=8000 LIVE_PORT=8780 bash start_live.sh
 ## Live 模式（兼容 OpenAI GPT-Live）
 
 [`live/`](live/README_CN.md) 是一个网关：对外是 OpenAI GPT-Live 协议，后面接 Tag 或 Flash 引擎；GPT-Live 客户端只要换地址和 key 就能用。智子负责听和说，需要查询、办事时通过委派交给你的后端，再把结果说出来；也可以让一个更大的模型做后台。
+
+## 零样本声音克隆（v1.1 新增）
+
+给智子几秒钟的录音，它就用这个声音和你实时对话。无需微调，无需重启，一张卡。Tag 版和 Flash 版均已支持。
+
+https://github.com/user-attachments/assets/74bd6096-b6fc-4433-a1d7-d3e967107193
+
+```bash
+pip install -U "sophon-realtime[trt]"
+sophon-realtime download --source modelscope
+cp alice.wav model/voices/                      # 3–10 秒，单人录音
+sophon-realtime serve                           # 然后设置 "voice": "alice"
+```
+
+新增、替换、删除声音都在下一次请求生效。克隆的声音照样能被打断、会附和、会笑；用一种语言的录音克隆的声音，也能说另一种语言。录音只留在你自己的服务器上（[详细说明](tag/README_CN.md)）。视频里还演示了 [Live 模式](live/README.md)：查天气、查新闻这类请求交给你自己的后端，智子一边继续聊，拿到结果后再说出来。
+
+**请只克隆自己的声音，或已获得声音主人许可的声音；不得用于冒充他人或欺诈。**
+
+<details>
+<summary>英文原版</summary>
+
+https://github.com/user-attachments/assets/7f0627b0-fae4-4633-b412-88cb24942ab8
+
+</details>
 
 ## E2E（预览）
 
