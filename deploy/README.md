@@ -3,7 +3,7 @@
 **Quickest (Tag build, one 80 GB GPU) / 最快（Tag 版，一张 80 GB 显卡）:**
 
 ```bash
-pip install sophon-realtime     # Python 3.12, Linux, CUDA
+pip install "sophon-realtime[trt]"   # Python 3.12, Linux, CUDA 13; keep [trt]: without TensorRT the voice is ~3x slower under load / 一定要带 [trt]，否则高并发下慢约 3 倍
 sophon-realtime serve           # downloads Sophon-Realtime-32B-Tag (~42 GB) on first run, serves on port 8000 / 首次运行会自动下载权重
 ```
 

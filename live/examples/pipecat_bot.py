@@ -4,7 +4,7 @@ The Sophon-Realtime Live gateway speaks the OpenAI Realtime protocol, so Pipecat
 OpenAIRealtimeLLMService works unchanged: point base_url at your gateway. No extra package.
 
 Server (one 80 GB GPU, see ../README.md):
-    pip install sophon-realtime && sophon-realtime serve --port 8000
+    pip install "sophon-realtime[trt]" && sophon-realtime serve --port 8000
     BUILD=tag PORT=8000 LIVE_PORT=8780 bash ../start_live.sh
 
 Bot:

@@ -15,6 +15,7 @@ if [ "${MPS:-1}" = 1 ] && command -v nvidia-cuda-mps-control >/dev/null; then   
   if echo get_server_list | nvidia-cuda-mps-control >/dev/null 2>&1; then DEV=0; echo "MPS on (GPU $GPU)"; else unset CUDA_MPS_PIPE_DIRECTORY CUDA_MPS_LOG_DIRECTORY; echo "MPS not available; running without it"; fi
 fi
 TRT=${TRT:-auto}; [ "$TRT" = auto ] && { $PY/python -c "import tensorrt" 2>/dev/null && TRT=1 || TRT=0; }
+[ "$TRT" = 0 ] && echo "WARNING: TensorRT is off (not installed?): the voice runs in plain PyTorch, about 3x slower under load. Re-run install.sh without NO_TRT=1."
 sed "s#__HERE__#$HERE#g" config/$CONFIG > logs/deploy_$PORT.yaml
 # tag-tts v1.3: distilled flow, 4 steps, no CFG; several requests' flow chunks share one TensorRT call
 export SOPHON_FLOW_STEPS=${SOPHON_FLOW_STEPS:-4} SOPHON_FLOW_CFG=${SOPHON_FLOW_CFG:-0} SOPHON_FLOW_ONNX=${SOPHON_FLOW_ONNX:-$MODEL_DIR/talker/flow.decoder.estimator.fp32.onnx} COSYVOICE3_BATCH_FLOW=${COSYVOICE3_BATCH_FLOW:-1} SOPHON_FLOW_MAXB=${SOPHON_FLOW_MAXB:-16}

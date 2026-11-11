@@ -4,6 +4,12 @@ One version number for the whole Sophon-Realtime v1 family: the code in this rep
 ModelScope (git tags with the same name) and the `sophon-realtime` package on PyPI. Each entry says which builds changed.
 Second digit: new features or new weights; third digit: fixes only.
 
+## 1.1.1 (2026-11-11): TensorRT install fix
+
+- Fix: `pip install "sophon-realtime[trt]"` failed with pip. TensorRT 10.13 depends on the deprecated `nvidia-cuda-runtime-cu13`, whose default release cannot be built. The `[trt]` extra now pins the one installable release (`0.0.0a0`). Tested from a fresh Python 3.12 venv with plain pip: TensorRT installs, the voice runs on TensorRT, 16 users get first audio in about 1 s. `tag/install.sh` was not affected.
+- `tag/install.sh` and `tag/start.sh` now print a clear warning when TensorRT is missing or off, instead of continuing silently.
+- `sophon-realtime` 1.1.1 on PyPI. No weight changes (weights stay at 1.1.0).
+
 ## 1.1.0 (2026-11-11): zero-shot voice cloning (Tag, Flash), new Tag voice model
 
 - Flash: zero-shot voice cloning ([#2](https://github.com/adventists-ai/sophon-realtime/issues/2)). Put a 3-10 s clip at `model/voices/<name>.wav` and use `"voice": "<name>"` in `/v1/chat/completions` or `/v1/realtime`; no fine-tuning or restart. Voices are re-read when the file changes, and an unknown or unreadable voice falls back to `chelsie` with a warning instead of failing the request. See [flash/README.md](flash/README.md#zero-shot-voice-cloning).

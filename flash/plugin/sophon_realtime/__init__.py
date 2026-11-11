@@ -1,8 +1,8 @@
 """Sophon-Realtime: DuplexJev (listen + write) -> Qwen3-TTS talker (speaks token by token while text is written) -> Code2Wav, released as a single vLLM-Omni model.
 
-After `pip install sophon-realtime`: vllm serve <Sophon-Realtime dir> --omni --deploy-config <sophon_realtime.yaml>
+Flash build (installed by flash/install.sh as `sophon-realtime-flash`): vllm serve <Sophon-Realtime dir> --omni --deploy-config <sophon_realtime.yaml>
 """
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 ARCH = "SophonRealtimeForConditionalGeneration"
 TALKER_ARCH = "SophonTTSTalker"
 _done = False
