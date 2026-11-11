@@ -157,20 +157,47 @@ class SophonTagTalker(CosyVoice3Model):
             # the stock plan cache key ignores the profile -> keep one cache dir per profile
             os.environ.setdefault("COSYVOICE3_TRT_CACHE", os.path.join(os.path.expanduser("~"), ".cache", "vllm_omni", "cosyvoice3_trt", f"b{rows}-{maxb}" + ("t" if dyn_t else "")))
             logger.info("SophonTagTalker: TensorRT flow profile batch %d..%d (opt %d), cache %s", rows, maxb, optb, os.environ["COSYVOICE3_TRT_CACHE"])
+        # Hard guard (independent of segmenting): the streaming flow re-runs over prompt + all tokens so far, so the
+        # TensorRT time axis grows with reply length. Keep only the last tokens (already-spoken ones beyond a context
+        # window are dropped), and if the flow still fails, lose that one chunk of one request instead of the stage.
+        max_frames = int(os.environ.get("SOPHON_FLOW_MAX_FRAMES", "2800"))
+        ctx_tok = int(os.environ.get("SOPHON_FLOW_CTX_TOKENS", "50"))
+        ratio = int(getattr(c2w, "token_mel_ratio", 2) or 2)
+
+        def window(token, prompt_token, offset):
+            n = int(token.shape[1]); room = max_frames // ratio - int(prompt_token.shape[1])
+            if max_frames <= 0 or n <= room:
+                return token, offset
+            cut = min(n - room, max(0, offset - ctx_tok))
+            if cut <= 0:
+                return token, offset
+            return token[:, cut:], offset - cut
+
+        fs = getattr(c2w, "forward_streaming", None)
         fb = getattr(c2w, "forward_streaming_batch", None)
-        if fb is not None and getattr(c2w, "forward_streaming", None) is not None:
-            single = c2w.forward_streaming
-            def batch_safe(items, **kw):
+        if fs is not None:
+            def fs_safe(token, prompt_token, prompt_feat, embedding, *, cache_state=None, n_timesteps=10, token_offset_tokens=0, finalize=False):
+                token, off = window(token, prompt_token, int(token_offset_tokens))
                 try:
-                    return fb(items, **kw)
+                    return fs(token, prompt_token, prompt_feat, embedding, cache_state=cache_state, n_timesteps=n_timesteps,
+                              token_offset_tokens=off, finalize=finalize)
                 except Exception as e:  # noqa: BLE001
-                    if len(items) <= 1:
-                        raise
-                    logger.error("SophonTagTalker: batched flow failed (%r), running %d requests one by one", e, len(items))
-                    return [single(token=it["token"], prompt_token=it["prompt_token"], prompt_feat=it["prompt_feat"], embedding=it["embedding"],
-                                   cache_state=it.get("cache_state"), n_timesteps=kw.get("n_timesteps", 10),
-                                   token_offset_tokens=int(it.get("token_offset_tokens", 0)), finalize=bool(it.get("finalize", False))) for it in items]
-            c2w.forward_streaming_batch = batch_safe
+                    logger.error("SophonTagTalker: flow failed for one request (%r, %d tokens); that audio chunk is dropped", e, int(token.shape[1]))
+                    return torch.zeros((1, 1, 0), device=prompt_feat.device), (None if finalize else cache_state)
+            c2w.forward_streaming = fs_safe
+            if fb is not None:
+                def batch_safe(items, **kw):
+                    items = [dict(it) for it in items]
+                    for it in items:
+                        it["token"], it["token_offset_tokens"] = window(it["token"], it["prompt_token"], int(it.get("token_offset_tokens", 0)))
+                    try:
+                        return fb(items, **kw)
+                    except Exception as e:  # noqa: BLE001
+                        logger.error("SophonTagTalker: batched flow failed (%r), running %d requests one by one", e, len(items))
+                        return [fs_safe(it["token"], it["prompt_token"], it["prompt_feat"], it["embedding"], cache_state=it.get("cache_state"),
+                                        n_timesteps=kw.get("n_timesteps", 10), token_offset_tokens=int(it.get("token_offset_tokens", 0)),
+                                        finalize=bool(it.get("finalize", False))) for it in items]
+                c2w.forward_streaming_batch = batch_safe
         for name in ("forward", "forward_streaming", "forward_streaming_batch"):
             fn = getattr(c2w, name, None)
             if fn is None:
