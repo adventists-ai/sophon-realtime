@@ -21,6 +21,30 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
 </p>
 
+## v1.1 新增：零样本声音克隆
+
+给智子几秒钟的录音，它就用这个声音和你实时对话。无需微调，无需重启，一张卡。Tag 版和 Flash 版均已支持。
+
+https://github.com/user-attachments/assets/74bd6096-b6fc-4433-a1d7-d3e967107193
+
+```bash
+pip install -U "sophon-realtime[trt]"
+sophon-realtime download --source modelscope
+cp alice.wav model/voices/                      # 3–10 秒，单人录音
+sophon-realtime serve                           # 然后设置 "voice": "alice"
+```
+
+新增、替换、删除声音都在下一次请求生效。克隆的声音照样能被打断、会附和、会笑；用一种语言的录音克隆的声音，也能说另一种语言。录音只留在你自己的服务器上（[详细说明](tag/README_CN.md)）。视频里还演示了 [Live 模式](live/README.md)：查天气、查新闻这类请求交给你自己的后端，智子一边继续聊，拿到结果后再说出来。
+
+**请只克隆自己的声音，或已获得声音主人许可的声音；不得用于冒充他人或欺诈。**
+
+<details>
+<summary>英文原版</summary>
+
+https://github.com/user-attachments/assets/7f0627b0-fae4-4633-b412-88cb24942ab8
+
+</details>
+
 ## 演示
 
 和智子实时语音的真实对话录屏，未剪辑、未加速。记得打开声音。

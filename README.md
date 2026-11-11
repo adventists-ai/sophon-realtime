@@ -21,6 +21,30 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0"></a>
 </p>
 
+## New in v1.1: zero-shot voice cloning
+
+Give Sophon a few seconds of someone's voice and it talks to you in that voice, in real time. No fine-tuning, no restart, one GPU. Works in the Tag and Flash builds.
+
+https://github.com/user-attachments/assets/7f0627b0-fae4-4633-b412-88cb24942ab8
+
+```bash
+pip install -U "sophon-realtime[trt]"
+sophon-realtime download --source modelscope   # or Hugging Face (default)
+cp alice.wav model/voices/                      # 3-10 s, one speaker
+sophon-realtime serve                           # then set "voice": "alice"
+```
+
+New, replaced and deleted voices take effect on the next request. Barge-in, backchannels and laughs still work in a cloned voice, and a voice cloned from one language can speak another. Everything stays on your server ([details](tag/README.md#zero-shot-voice-cloning)). The video also shows [Live mode](live/README.md): Sophon hands lookups (weather, news) to your own backend, keeps talking, then says the answer.
+
+**Please only clone your own voice or voices you have permission to use. Do not use it to impersonate anyone or to deceive.**
+
+<details>
+<summary>Chinese-subtitled version</summary>
+
+https://github.com/user-attachments/assets/74bd6096-b6fc-4433-a1d7-d3e967107193
+
+</details>
+
 ## Demo
 
 Real conversations with Sophon-Realtime, recorded as they happened: no edits, no speed-up. Turn the sound on.
