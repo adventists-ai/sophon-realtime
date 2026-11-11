@@ -38,19 +38,12 @@ SPEECH_PROB = float(os.environ.get("SOPHON_SPEECH_PROB", "0.5"))
 SPEC_AT = float(os.environ.get("SOPHON_SPEC_AT", "0.05"))       # after this much silence, speculatively start writing a reply (held silent until DuplexJev judges the turn finished); <=0 disables
 RES_TIMEOUT = float(os.environ.get("SOPHON_RES_TIMEOUT", "15"))  # an append not confirmed by the framework within this time is rolled back (and a reply resent)
 SPEC_MIN_SPEECH = float(os.environ.get("SOPHON_SPEC_MIN_SPEECH", "0.3"))   # only draft speculatively once the user has spoken this long (s)
-from .proc import REPLY_S as _REPLY_S
-# Long replies: one reply speaks at most ~SOPHON_MAX_REPLY_S seconds (proc.budget_plan decides the exact sentence where it
-# stops; captions and history end at the same point). REPLY_TOKENS only bounds how far the thinker writes past that point
-# (~0.3 s of speech per token, x2 margin). AUTO_CONTINUE: the session then continues the reply from exactly what was said.
-REPLY_TOKENS = int(os.environ.get("SOPHON_REPLY_TOKENS", str(int(_REPLY_S * 6.5) if _REPLY_S > 0 else 0)))
-AUTO_CONTINUE = os.environ.get("SOPHON_AUTO_CONTINUE", "1") == "1"
-CONT_SILENCE = SR // 10                                             # a continuation has no new user speech: 0.1 s of silence as its (ignored) audio
 MERGE_WINDOW = float(os.environ.get("SOPHON_MERGE_WINDOW", "2.0"))
 FALLBACK_S = float(os.environ.get("SOPHON_TURN_FALLBACK", "2.0"))
 IGNORE_SHORT = os.environ.get("SOPHON_IGNORE_SHORT", "0") == "1"     # on fallback, ignore short backchannels (default off: leave it to the model; fallback replies as usual)
 from .env import port as _port, vision as _vision
 from . import tools as _tools
-from .proc import strip_tags as _strip_tags, tag_clean as _tag_clean, budget_plan as _budget_plan
+from .proc import strip_tags as _strip_tags, tag_clean as _tag_clean
 
 
 def _display(s, final):
@@ -295,7 +288,6 @@ class SophonBuffer(PcmAppendBuffer):
     history: list = field(default_factory=list)              # [{"user": np, "a_audio": np|None, "a_text": str}]
     last_said: str = ""
     tool_mocks: dict = field(default_factory=dict)            # session extra_body.tool_mocks (server-side mock executor)
-    cont: dict | None = None                                 # a long reply's next segment: {"said": raw text spoken so far, "budget": tokens left}
     retry: dict | None = None                                # a reply append the framework did not accept: send it again as soon as appends are allowed
     tool_followup: bool = False                              # a tool result is in history: speak the answer as soon as the user is silent
     tool_mode: str = "mock"                                   # "mock": run tool_mocks here; "client": hand calls to the gateway over the bridge
@@ -431,16 +423,6 @@ class SophonBuffer(PcmAppendBuffer):
                 elif allow_emit and not self.reservations and not self.inflight_t:
                     p, self.retry = self.retry, None
                     logger.info("sophon duplex: resending reply append")
-                    return self._res(operation_id, p)
-            if self.cont is not None and self.retry is None:
-                if self.speech_ms > 0:
-                    logger.info("sophon duplex: user spoke, dropping the rest of a long reply"); self.cont = None
-                elif allow_emit and not self.reservations and not self.inflight_t:
-                    c, self.cont = self.cont, None
-                    p = self._payload("reply"); p["audio"] = base64.b64encode(np.zeros(CONT_SILENCE, np.float32).tobytes()).decode()
-                    p["resume"] = c["said"]; p["cont_budget"] = c["budget"]
-                    self.prev_user = None; self.t_reply = time.monotonic()
-                    logger.info("sophon duplex: next segment of a long reply (said %d chars, %d tokens left)", len(c["said"]), c["budget"])
                     return self._res(operation_id, p)
             if self.speech_ms < 120:
                 return None
@@ -623,18 +605,11 @@ class SophonDataPlane(DuplexDataPlane):
                 info["a_text"] += text
             if info is not None and stage_id == 2 and encoded and not info.get("t_aud"):
                 info["t_aud"] = 1; logger.info("sophon timing: first audio %.3fs after reply plan (mono=%.3f)", time.monotonic() - info["t_plan"], time.monotonic())
-            if info is not None and stage_id == 0:
-                info["n_tok"] = info.get("n_tok", 0) + len(getattr(completion, "token_ids", None) or ())
-                if bool(output.finished): info["finish"] = getattr(completion, "finish_reason", None)
             if info is not None and stage_id == 0 and bool(output.finished) and info.get("kind") == "reply" and not info.get("announced"):
                 self.plugin._announce(info)
             done = bool(output.finished) and stage_id == 2
             if info is not None and stage_id == 0:      # Tag build: captions never show sound tags (the talker still gets them)
                 cap = info["a_text"]
-                plan = _budget_plan(cap)                   # same speech budget as the talker: captions never run past what will be said
-                if plan is not None:
-                    cap = cap[:plan[0]]
-                    if plan[1]: info["capped"] = cap
                 shown = _display(cap, bool(output.finished))
                 prev = info.get("shown", "")
                 text = shown[len(prev):] if shown.startswith(prev) else ""
@@ -750,8 +725,6 @@ class SophonRealtimeDuplexPlugin(DuplexModelPlugin):
             if runtime_config.get("temperature") is not None:
                 p0.temperature = float(runtime_config["temperature"])
             p0.max_tokens = runtime_config["max_tokens"] if isinstance(runtime_config.get("max_tokens"), int) else (240 if runtime_config.get("tools") else 120)
-            if REPLY_TOKENS > 0 and p0.max_tokens > REPLY_TOKENS:
-                p0.max_tokens = REPLY_TOKENS                    # long replies: see the REPLY_TOKENS note at the top
             p0.logprobs = 20                                     # turn questions need letter probabilities
             rp = float(os.environ.get("SOPHON_REP_PENALTY", "1.0"))
             if rp != 1.0: p0.repetition_penalty = rp
@@ -864,7 +837,6 @@ class SophonRealtimeDuplexPlugin(DuplexModelPlugin):
             msgs.append({"role": "user", "content": "<|audio|>"}); audios.append((entry["user"], SR))
             info = {"kind": "reply", "buf": buf, "user": entry["user"], "a_audio": [], "a_text": "", "t_plan": time.monotonic(),
                     "spec": False, "released": True, "dropped": False, "held": [], "resume_entry": entry, "said": said}
-            self._budget_setup(info, runtime_config, payload)
             self._reqs[request_id] = info; buf.prev_rid = request_id
             logger.info("sophon duplex resume request=%s hist=%d said=%r", request_id, len(buf.history), said[-60:])
             return DuplexAppendPlan(prompt={"prompt": self._render(msgs, tools) + said, "multi_modal_data": {"audio": audios}, "additional_information": addl})
@@ -887,7 +859,6 @@ class SophonRealtimeDuplexPlugin(DuplexModelPlugin):
         spec_id = payload.get("spec_id")
         info = {"kind": "reply", "buf": buf, "user": audio, "a_audio": [], "a_text": "", "t_plan": time.monotonic(),
                 "spec": bool(spec_id), "released": not spec_id, "dropped": False, "held": []}
-        self._budget_setup(info, runtime_config, payload)
         with self._spec_lock:
             if spec_id:
                 self._spec_rid[spec_id] = request_id
@@ -902,16 +873,6 @@ class SophonRealtimeDuplexPlugin(DuplexModelPlugin):
         mm = {"audio": audios}
         if images: mm["image"] = images
         return DuplexAppendPlan(prompt={"prompt": self._render(msgs, tools), "multi_modal_data": mm, "additional_information": addl})
-
-    @staticmethod
-    def _budget(runtime_config):
-        mt = runtime_config.get("max_tokens")
-        return mt if isinstance(mt, int) else (240 if runtime_config.get("tools") else 120)
-
-    def _budget_setup(self, info, runtime_config, payload):
-        """The client's token budget for the whole (possibly continued) reply; a continuation carries what is left."""
-        budget = payload.get("cont_budget")
-        info["budget"] = int(budget) if budget is not None else self._budget(runtime_config)
 
     def _active_reply(self, bid):
         for rid, info in list(self._reqs.items()):
@@ -996,27 +957,7 @@ class SophonRealtimeDuplexPlugin(DuplexModelPlugin):
         if info is None or info.get("kind") != "reply" or info["buf"] is None:
             return
         buf = info["buf"]; a = np.concatenate(info["a_audio"]) if info["a_audio"] else None
-        nxt = None
-        full = info.get("a_text", "")
-        if completed and not _tools.has_tool(info.get("raw", "")):
-            capped = info.get("capped")                     # over the speech budget: the reply ended at this sentence (proc.budget_plan)
-            if capped is not None or info.get("finish") == "length":
-                spoken = capped if capped is not None else full
-                if capped is not None:
-                    info["a_text"] = capped; info["raw"] = capped
-                used = info.get("n_tok", 0) if capped is None else int(info.get("n_tok", 0) * len(capped) / max(1, len(full)))
-                left = int(info.get("budget", 0)) - used
-                if AUTO_CONTINUE and left > 0 and spoken.strip():
-                    nxt = {"said": info.get("said", "") + spoken, "budget": left}
-                else:
-                    logger.info("sophon duplex: long reply %s stopped (%s)", rid[-24:], "client token budget used" if left <= 0 else "auto-continue off")
-        try:
-            self._finish_reply_inner(rid, info, buf, a, completed)
-        finally:
-            if nxt is not None:
-                with buf.lock:
-                    if buf.speech_ms == 0: buf.cont = nxt
-                    else: logger.info("sophon duplex: user is speaking, long reply not continued")
+        self._finish_reply_inner(rid, info, buf, a, completed)
 
     def _finish_reply_inner(self, rid, info, buf, a, completed):
         if completed and not info.get("announced"): self._announce(info)

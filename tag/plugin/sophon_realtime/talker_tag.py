@@ -160,32 +160,13 @@ class SophonTagTalker(CosyVoice3Model):
             # the stock plan cache key ignores the profile -> keep one cache dir per profile
             os.environ.setdefault("COSYVOICE3_TRT_CACHE", os.path.join(os.path.expanduser("~"), ".cache", "vllm_omni", "cosyvoice3_trt", f"b{rows}-{maxb}" + ("t" if dyn_t else "")))
             logger.info("SophonTagTalker: TensorRT flow profile batch %d..%d (opt %d), cache %s", rows, maxb, optb, os.environ["COSYVOICE3_TRT_CACHE"])
-        # Hard guard (independent of segmenting): the streaming flow re-runs over prompt + all tokens so far, so the
-        # TensorRT time axis grows with reply length. Keep only the last tokens (already-spoken ones beyond a context
-        # window are dropped), and if the flow still fails, lose that one chunk of one request instead of the stage.
-        max_frames = int(os.environ.get("SOPHON_FLOW_MAX_FRAMES", "2800"))
-        ctx_tok = int(os.environ.get("SOPHON_FLOW_CTX_TOKENS", "50"))
-        # Bounded left context (streaming decode with a fixed look-back, as vLLM-Omni does for Qwen3-TTS via
-        # codec_left_context_frames): each chunk is decoded from the voice prompt + the last `left_ctx` already-spoken
-        # tokens + the new tokens, so the cost per chunk stays constant instead of growing with the reply. 0 = off.
-        left_ctx = int(os.environ.get("SOPHON_FLOW_LEFT_CTX", "0"))
-        ratio = int(getattr(c2w, "token_mel_ratio", 2) or 2)
-
-        def window(token, prompt_token, offset):
-            n = int(token.shape[1])
-            cut = max(0, offset - left_ctx) if left_ctx > 0 else 0
-            room = max_frames // ratio - int(prompt_token.shape[1])
-            if max_frames > 0 and n - cut > room:
-                cut = max(cut, min(n - room, max(0, offset - ctx_tok)))
-            if cut <= 0:
-                return token, offset
-            return token[:, cut:], offset - cut
-
+        # Isolation: if the flow fails for one request, lose that one chunk of that request instead of the whole stage.
+        # (The chunk length itself stays bounded: proc._bound_left_context keeps codec_left_context_frames of context.)
         fs = getattr(c2w, "forward_streaming", None)
         fb = getattr(c2w, "forward_streaming_batch", None)
         if fs is not None:
             def fs_safe(token, prompt_token, prompt_feat, embedding, *, cache_state=None, n_timesteps=10, token_offset_tokens=0, finalize=False):
-                token, off = window(token, prompt_token, int(token_offset_tokens))
+                off = int(token_offset_tokens)
                 try:
                     return fs(token, prompt_token, prompt_feat, embedding, cache_state=cache_state, n_timesteps=n_timesteps,
                               token_offset_tokens=off, finalize=finalize)
@@ -195,9 +176,6 @@ class SophonTagTalker(CosyVoice3Model):
             c2w.forward_streaming = fs_safe
             if fb is not None:
                 def batch_safe(items, **kw):
-                    items = [dict(it) for it in items]
-                    for it in items:
-                        it["token"], it["token_offset_tokens"] = window(it["token"], it["prompt_token"], int(it.get("token_offset_tokens", 0)))
                     try:
                         return fb(items, **kw)
                     except Exception as e:  # noqa: BLE001

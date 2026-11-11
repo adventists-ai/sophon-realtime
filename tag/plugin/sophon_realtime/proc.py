@@ -21,11 +21,6 @@ from vllm_omni.model_executor.stage_input_processors.tts_utils import extract_la
 logger = init_logger("vllm_omni.sophon_realtime.proc")
 
 LEAD = int(os.environ.get("SOPHON_LEAD", "5"))
-# One reply speaks at most about REPLY_S seconds and always stops at a sentence end. The cut is a pure function of the
-# thinker text (budget_plan), so the talker (here) and the session (duplex.py) compute the same point: the spoken audio,
-# the caption and the history all end at the same sentence, and the session can continue seamlessly from there.
-REPLY_S = float(os.environ.get("SOPHON_MAX_REPLY_S", "45"))
-HOLD_S = 8.0          # within this many seconds of the budget, only complete sentences go to the talker
 POINT = {"[laughter]", "[breath]", "[sigh]", "[cough]", "[quick_breath]"}
 SPAN = {"laughter", "strong"}
 CLOSE = {"[": "]", "<": ">", "(": ")", "（": "）", "【": "】"}
@@ -116,59 +111,6 @@ def speech_seconds(text: str) -> float:
     return cjk * 0.22 + words * 0.4
 
 
-def _soft_breaks(raw: str, n: int) -> int:
-    """Index just after the last comma / colon / space before n (outside tags); 0 if none."""
-    best = 0; depth = None
-    for i in range(min(n, len(raw))):
-        c = raw[i]
-        if depth:
-            if c == depth: depth = None
-            continue
-        if c in "[<": depth = "]" if c == "[" else ">"; continue
-        if c in "，,、：:" or c.isspace(): best = i + 1
-    return best
-
-
-def _secs(raw: str) -> float:
-    return speech_seconds(tag_clean(raw, True))
-
-
-def _fit(raw: str, limit_s: float) -> int:
-    """Largest index i such that raw[:i] takes at most limit_s seconds to say (spoken length only grows with i)."""
-    lo, hi = 0, len(raw)
-    while lo < hi:
-        mid = (lo + hi + 1) // 2
-        if _secs(raw[:mid]) <= limit_s: lo = mid
-        else: hi = mid - 1
-    return lo
-
-
-def budget_plan(raw: str) -> tuple[int, bool] | None:
-    """Speech budget for one reply, as a pure function of the raw thinker text (so the talker in proc.py and the
-    session in duplex.py always agree). Returns None while the reply is short, else (limit, done):
-    - limit: only raw[:limit] may be spoken / captioned for now;
-    - done: the reply is over budget and ends exactly at raw[:limit].
-    In the last HOLD_S seconds before the budget only whole sentences are released (but never less than the text that
-    fits before that zone, z), and the final cut is the last sentence end in [z, budget], else the last comma / space in
-    that range, else the last character that fits. Everything released earlier is therefore always inside the cut."""
-    if REPLY_S <= 0:
-        return None
-    total = _secs(raw)
-    if total <= REPLY_S - HOLD_S:
-        return None
-    z = _fit(raw, REPLY_S - HOLD_S)
-    if total <= REPLY_S:
-        return max(z, last_boundary(raw)), False
-    e = _fit(raw, REPLY_S)
-    b = last_boundary(raw, e)
-    if b >= z and b > 0:
-        return b, True
-    s = _soft_breaks(raw, e)
-    if s >= z and s > 0:
-        return s, True
-    return e, True
-
-
 def _tokenizer(tm):
     global _TOK
     if _TOK is None:
@@ -218,16 +160,7 @@ def thinker2talker_async_chunk(transfer_manager, multimodal_output, request, is_
     out = [int(t) for t in (request.output_token_ids or [])]
     raw = cut_tool(tok.decode(out, skip_special_tokens=True), is_finished)
     st = _ST.setdefault(rid, {"sent": 0, "raw_len": 0})
-    if st.get("closed"):
-        if is_finished: _ST.pop(rid, None)
-        return None
-    final = is_finished; close = False
-    plan = budget_plan(raw)
-    if plan is not None:                       # speech budget (see budget_plan): never release text past the plan's limit
-        limit, done = plan
-        raw = raw[:max(limit, 0)]
-        if done:
-            final = True; close = not is_finished
+    final = is_finished
     text = tag_clean(raw, final).lstrip()
     ids = _talker_tokenizer().encode(text, allowed_special="all") if text else []
     stable = ids if final else ids[:-1]
@@ -238,8 +171,6 @@ def thinker2talker_async_chunk(transfer_manager, multimodal_output, request, is_
             return None
     if is_finished:
         _ST.pop(rid, None)
-    elif close:
-        st["closed"] = True
     else:
         st["raw_len"] = max(st["raw_len"], len(raw))
     st["sent"] = max(st["sent"], len(stable), 1)
@@ -283,4 +214,24 @@ def talker2code2wav_async_chunk(transfer_manager, multimodal_output, request, is
     state = transfer_manager.request_payload.get(request.external_req_id)
     if not isinstance(state, dict) or "_cosyvoice3_async_state" not in state:
         multimodal_output = _voice_payload(request)
-    return _cv.talker2code2wav_async_chunk(transfer_manager, multimodal_output, request, is_finished)
+    payload = _cv.talker2code2wav_async_chunk(transfer_manager, multimodal_output, request, is_finished)
+    return _bound_left_context(transfer_manager, payload)
+
+
+def _bound_left_context(transfer_manager, payload):
+    """Honour codec_left_context_frames (as vLLM-Omni's Qwen3-Omni / Qwen3-TTS chunkers do): the stock CosyVoice3
+    chunker sends every token spoken so far with each chunk, so the flow decoder re-runs over the whole reply and the
+    cost per chunk grows with its length. Keep only the last N already-decoded tokens as left context."""
+    meta = getattr(payload, "meta", None); codes = getattr(payload, "codes", None)
+    off = getattr(meta, "left_context_size", None) if meta is not None else None
+    audio = getattr(codes, "audio", None) if codes is not None else None
+    if off is None or audio is None:
+        return payload
+    cfg = getattr(getattr(transfer_manager, "connector", None), "config", {}) or {}
+    cfg = cfg.get("extra", cfg) if isinstance(cfg, dict) else {}
+    left = int(cfg.get("codec_left_context_frames", 25))
+    drop = int(off) - left
+    if left > 0 and drop > 0:
+        codes.audio = audio[drop:]
+        meta.left_context_size = left
+    return payload
