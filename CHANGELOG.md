@@ -4,6 +4,12 @@ One version number for the whole Sophon-Realtime v1 family: the code in this rep
 ModelScope (git tags with the same name) and the `sophon-realtime` package on PyPI. Each entry says which builds changed.
 Second digit: new features or new weights; third digit: fixes only.
 
+## 1.1.2 (2026-11-11): `sophon-realtime serve` uses CUDA MPS
+
+- `sophon-realtime serve` now runs the three stages through CUDA MPS on the GPU, as `tag/start.sh` always did. Before, they time-sliced the GPU: with 16 concurrent long replies each session got about 120 s of speech in a 170 s window (slower than real time, so listeners heard pauses); with MPS about 200 s (faster than real time), and first audio drops too. `SOPHON_MPS=0` turns it off; without the MPS tools it falls back to the old behaviour with a note.
+- Re-qualified from a fresh `pip install "sophon-realtime[trt]"` and freshly downloaded weights on one H100, with the protocol from [HF discussion #1](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag/discussions/1): first realtime session after a cold start answered; 16 short requests at concurrency 1 / 4 / 8 / 16; long replies serially (up to 11 min of speech) and 16 concurrent with 163.84 s of silence for 4 consecutive batches plus a fresh session, then again after a fresh restart. No rejected TensorRT shapes, no stage crash, no server-side error or unexpected session end.
+- `sophon-realtime` 1.1.2 on PyPI. No weight changes (weights stay at 1.1.0).
+
 ## 1.1.1 (2026-11-11): TensorRT install fix
 
 - Fix: `pip install "sophon-realtime[trt]"` failed with pip. TensorRT 10.13 depends on the deprecated `nvidia-cuda-runtime-cu13`, whose default release cannot be built. The `[trt]` extra now pins the one installable release (`0.0.0a0`). Tested from a fresh Python 3.12 venv with plain pip: TensorRT installs, the voice runs on TensorRT, 16 users get first audio in about 1 s. `tag/install.sh` was not affected.
