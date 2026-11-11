@@ -61,7 +61,7 @@ https://github.com/user-attachments/assets/1d9442ef-84b0-45a3-acd4-2d05a9562397
 ## News
 
 - **2026-11-11 · v1.1: zero-shot voice cloning** in the Tag and Flash builds. A few seconds of audio and it talks to you in that voice, in real time. [Watch the demo](#zero-shot-voice-cloning-new-in-v11)
-- **2026-11-11 · 1.1.3: E2E is out of preview and runs on one GPU.** New talker, first audio in about 0.25 s, 16 users per 80 GB GPU, NVV-SuperBench 0.75 (English) / 0.85 (Chinese). [Details](#e2e)
+- **2026-11-11 · 1.1.3: E2E joins Tag and Flash as a full build, on one GPU.** New talker, first audio in about 0.25 s, 16 users per 80 GB GPU, NVV-SuperBench 0.75 (English) / 0.85 (Chinese). [Details](#e2e)
 - **2026-11-11 · 1.1.2:** `sophon-realtime serve` turns on CUDA MPS by default; long-reply and cold-start fixes. See the [changelog](CHANGELOG.md).
 - **2026-11-08 · v1.0:** first public release of the Tag, Flash and E2E (preview) builds.
 
@@ -82,7 +82,7 @@ All three builds share the same brain: one 32B model that listens to your voice,
 | Weights | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) |
 | Code | [`tag/`](tag/README.md) | [`flash/`](flash/README.md) | [`docs/deploy.md`](docs/deploy.md) |
 
-**Which one?** Start with **Tag** if you want the voice to act. Pick **Flash** if latency and the number of users per GPU matter most. Same APIs, so you can switch later.
+**Which one?** Start with **Tag** if you want the voice to act. Pick **Flash** if the number of users per GPU matters most. Pick **E2E** for the fastest first audio with a voice that still laughs and sighs. Tag and Flash share the same APIs, so you can switch later; E2E runs on its own engine.
 
 ## Languages
 
@@ -177,16 +177,7 @@ https://github.com/user-attachments/assets/74bd6096-b6fc-4433-a1d7-d3e967107193
 
 The E2E build has no speech-token model in the middle. A compact talker (about 350M parameters) reads the brain's tagged reply while it is still being written and generates a stream of continuous voice vectors, 12.5 frames per second; a 2-step decoder and a vocoder turn them into 24 kHz audio. Laughs, coughs, sighs, breaths and stressed words are produced by the talker itself, as part of the same stream. Everything runs on **one 80 GB GPU** with our own engine: [docs/deploy.md](docs/deploy.md). Weights: [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E).
 
-**New in 1.1.3: out of preview.** New talker, new engine, one GPU instead of two:
-
-| | E2E preview (1.0 – 1.1.2) | **E2E 1.1.3** |
-|---|---|---|
-| GPUs | 2 × 80 GB | **1 × 80 GB** |
-| First audio, one user | ~1 s | **~0.25 s** |
-| Recommended users per GPU | 4–5 | **16** (first audio 0.44 s median, 0.56 s P90) |
-| NVV-SuperBench, en / zh | 0.60 / 0.77 | **0.75 / 0.85** |
-
-Measured from a fresh install on one H100; see [docs/deploy.md](docs/deploy.md#performance-one-h100-80-gb-measured-from-a-fresh-install) for the full table. This build speaks Chinese and English with one built-in voice. The preview weights stay available as tag `v1.1.0` of the weight repositories (use them with code tag `v1.1.2`), and the first release in [Sophon-Realtime-v1](https://huggingface.co/adventists-ai/Sophon-Realtime-v1).
+Measured from a fresh install on one H100: first audio for one user in about 0.25 s; 16 users arriving within 10 s get first audio in 0.44 s (median) / 0.56 s (P90) with no reply falling behind playback. NVV-SuperBench: 0.75 (English) / 0.85 (Chinese). Full table in [docs/deploy.md](docs/deploy.md#performance-one-h100-80-gb-measured-from-a-fresh-install). This build speaks Chinese and English with one built-in voice; for voice cloning or more languages use Tag or Flash.
 
 ## Fine-tuning
 

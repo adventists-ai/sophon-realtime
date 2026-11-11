@@ -1,5 +1,5 @@
 # Copyright 2026 Adventists AI. Apache-2.0.
-"""Sophon-Realtime E2E talker (220M): streaming reply text (+ sound-event marks) -> vector frames. Inference only."""
+"""Sophon-Realtime E2E talker: streaming reply text (+ sound-event marks) -> vector frames. Inference only."""
 import os, json, math
 import torch, torch.nn as nn, torch.nn.functional as F
 E_ = os.environ.get

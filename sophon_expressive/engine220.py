@@ -1,5 +1,5 @@
 # Copyright 2026 Adventists AI. Apache-2.0.
-"""Sophon-Realtime E2E speaking engine (single GPU): streaming reply text -> 220M talker (CUDA Graph, all sessions batched in one step)
+"""Sophon-Realtime E2E speaking engine (single GPU): streaming reply text -> talker (CUDA Graph, all sessions batched in one step)
 -> vector frames -> adapter -> 2-step DiT (batched) -> HiFT, 24 kHz PCM16.
 API: core = Core(); s = Session(core, lang, voice, emit); s.add_text(...); s.finish(); s.run()"""
 import os, sys, time, threading, re, numpy as np, torch
