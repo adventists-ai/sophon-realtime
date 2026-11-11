@@ -175,7 +175,7 @@ https://github.com/user-attachments/assets/7f0627b0-fae4-4633-b412-88cb24942ab8
 
 ## E2E
 
-E2E 版中间不经过语音 token。一个小巧的说话头（约 3.5 亿参数）在大脑还在写回复的时候就开始读，边读边生成连续的声音向量（每秒 12.5 帧），再由 2 步解码器和声码器还原成 24 kHz 音频。笑、咳嗽、叹气、呼吸和重读都由说话头自己在同一条流里发出来。整套系统跑在**一张 80 GB 显卡**上，使用我们的自研引擎：[docs/deploy_CN.md](docs/deploy_CN.md)。权重：[魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E)。
+E2E 版中间不经过语音 token。一个小巧的说话头（约 3.5 亿参数）在大脑还在写回复的时候就开始读，边读边生成连续的声音向量（每秒约 6.5 帧），再由 2 步解码器和声码器还原成 24 kHz 音频。笑、咳嗽、叹气、呼吸和重读都由说话头自己在同一条流里发出来。整套系统跑在**一张 80 GB 显卡**上，使用我们的自研引擎：[docs/deploy_CN.md](docs/deploy_CN.md)。权重：[魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E)。
 
 单张 H100 上全新安装后的实测：单路首包约 0.25 秒；16 路用户在 10 秒内陆续到达时，首包中位数 0.44 秒、P90 0.56 秒，没有回复出现播放落后。NVV-SuperBench：英文 0.75 / 中文 0.85。完整表格见 [docs/deploy_CN.md](docs/deploy_CN.md)。这一版用一个内置音色说中文和英文；需要音色克隆或更多语言，请用 Tag 或 Flash。
 
