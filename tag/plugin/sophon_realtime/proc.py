@@ -21,9 +21,11 @@ from vllm_omni.model_executor.stage_input_processors.tts_utils import extract_la
 logger = init_logger("vllm_omni.sophon_realtime.proc")
 
 LEAD = int(os.environ.get("SOPHON_LEAD", "5"))
-SEG_HOLD = int(os.environ.get("SOPHON_SEG_HOLD", "40"))          # segmented replies: within this many tokens of the segment limit, hold back text after the last sentence end
-MAX_SPEECH_S = float(os.environ.get("SOPHON_MAX_SPEECH_S", "50"))  # unsegmented requests: stop speaking at the last sentence end before this much speech
-SEG_DIR = os.environ.get("SOPHON_SEG_DIR", "/dev/shm/sophon_seg")
+# One reply speaks at most about REPLY_S seconds and always stops at a sentence end. The cut is a pure function of the
+# thinker text (budget_plan), so the talker (here) and the session (duplex.py) compute the same point: the spoken audio,
+# the caption and the history all end at the same sentence, and the session can continue seamlessly from there.
+REPLY_S = float(os.environ.get("SOPHON_MAX_REPLY_S", "45"))
+HOLD_S = 8.0          # within this many seconds of the budget, only complete sentences go to the talker
 POINT = {"[laughter]", "[breath]", "[sigh]", "[cough]", "[quick_breath]"}
 SPAN = {"laughter", "strong"}
 CLOSE = {"[": "]", "<": ">", "(": ")", "（": "）", "【": "】"}
@@ -114,43 +116,57 @@ def speech_seconds(text: str) -> float:
     return cjk * 0.22 + words * 0.4
 
 
-def _seg_path(rid: str) -> str:
-    import hashlib
-    return os.path.join(SEG_DIR, hashlib.sha1(rid.encode()).hexdigest() + ".json")
+def _soft_breaks(raw: str, n: int) -> int:
+    """Index just after the last comma / colon / space before n (outside tags); 0 if none."""
+    best = 0; depth = None
+    for i in range(min(n, len(raw))):
+        c = raw[i]
+        if depth:
+            if c == depth: depth = None
+            continue
+        if c in "[<": depth = "]" if c == "[" else ">"; continue
+        if c in "，,、：:" or c.isspace(): best = i + 1
+    return best
 
 
-def seg_handoff(rid: str, said_raw):
-    """Segment end: tell the plugin which raw text was actually spoken (None: the reply ended by itself)."""
-    import json
-    try:
-        os.makedirs(SEG_DIR, exist_ok=True); tmp = _seg_path(rid) + ".tmp"
-        with open(tmp, "w") as f: json.dump({"rid": rid, "said": said_raw}, f, ensure_ascii=False)
-        os.replace(tmp, _seg_path(rid))
-    except Exception:  # noqa: BLE001
-        pass
+def _secs(raw: str) -> float:
+    return speech_seconds(tag_clean(raw, True))
 
 
-def seg_read(rid: str, wait: float = 1.0):
-    """Plugin side: the handoff for a request id (exact or prefix match); returns (found, said_raw)."""
-    import json, time
-    end = time.monotonic() + wait
-    while True:
-        try:
-            for n in ([_seg_path(rid)] + [os.path.join(SEG_DIR, x) for x in os.listdir(SEG_DIR) if x.endswith(".json")]):
-                try:
-                    with open(n) as f: d = json.load(f)
-                except Exception:  # noqa: BLE001
-                    continue
-                r = d.get("rid") or ""
-                if r == rid or r.startswith(rid) or rid.startswith(r):
-                    try: os.remove(n)
-                    except Exception: pass  # noqa: E701
-                    return True, d.get("said")
-        except FileNotFoundError:
-            pass
-        if time.monotonic() >= end:
-            return False, None
-        time.sleep(0.05)
+def _fit(raw: str, limit_s: float) -> int:
+    """Largest index i such that raw[:i] takes at most limit_s seconds to say (spoken length only grows with i)."""
+    lo, hi = 0, len(raw)
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if _secs(raw[:mid]) <= limit_s: lo = mid
+        else: hi = mid - 1
+    return lo
+
+
+def budget_plan(raw: str) -> tuple[int, bool] | None:
+    """Speech budget for one reply, as a pure function of the raw thinker text (so the talker in proc.py and the
+    session in duplex.py always agree). Returns None while the reply is short, else (limit, done):
+    - limit: only raw[:limit] may be spoken / captioned for now;
+    - done: the reply is over budget and ends exactly at raw[:limit].
+    In the last HOLD_S seconds before the budget only whole sentences are released (but never less than the text that
+    fits before that zone, z), and the final cut is the last sentence end in [z, budget], else the last comma / space in
+    that range, else the last character that fits. Everything released earlier is therefore always inside the cut."""
+    if REPLY_S <= 0:
+        return None
+    total = _secs(raw)
+    if total <= REPLY_S - HOLD_S:
+        return None
+    z = _fit(raw, REPLY_S - HOLD_S)
+    if total <= REPLY_S:
+        return max(z, last_boundary(raw)), False
+    e = _fit(raw, REPLY_S)
+    b = last_boundary(raw, e)
+    if b >= z and b > 0:
+        return b, True
+    s = _soft_breaks(raw, e)
+    if s >= z and s > 0:
+        return s, True
+    return e, True
 
 
 def _tokenizer(tm):
@@ -205,28 +221,13 @@ def thinker2talker_async_chunk(transfer_manager, multimodal_output, request, is_
     if st.get("closed"):
         if is_finished: _ST.pop(rid, None)
         return None
-    cont = _entry(request, "sophon_cont") == "1"
     final = is_finished; close = False
-    if cont:                                   # segmented reply: never let the talker speak past the last sentence end of a segment
-        maxt = int(getattr(getattr(request, "sampling_params", None), "max_tokens", 0) or 0)
-        if maxt and len(out) >= maxt - SEG_HOLD:
-            keep = max(last_boundary(raw), st["raw_len"])
-            hit = is_finished and len(out) >= maxt
-            if keep > 0 and (not is_finished or hit):
-                raw = raw[:keep]; final = final or hit
-            if hit: seg_handoff(rid, raw)
-        if is_finished and not (maxt and len(out) >= maxt): seg_handoff(rid, None)
-    else:                                      # unsegmented (e.g. HTTP with a large max_tokens): end the speech at a sentence end before MAX_SPEECH_S
-        sp = speech_seconds(tag_clean(raw, is_finished)) if MAX_SPEECH_S > 0 else 0.0
-        if sp > MAX_SPEECH_S - 8:              # within 8 s of the cap: hold text back at sentence ends
-            b = last_boundary(raw)
-            while b > st["raw_len"] and speech_seconds(tag_clean(raw[:b], True)) > MAX_SPEECH_S:
-                b = last_boundary(raw, b - 1)
-            keep = max(b, st["raw_len"])
-            if sp > MAX_SPEECH_S:
-                raw = raw[:keep]; final = True; close = True
-            elif not is_finished:
-                raw = raw[:keep]
+    plan = budget_plan(raw)
+    if plan is not None:                       # speech budget (see budget_plan): never release text past the plan's limit
+        limit, done = plan
+        raw = raw[:max(limit, 0)]
+        if done:
+            final = True; close = not is_finished
     text = tag_clean(raw, final).lstrip()
     ids = _talker_tokenizer().encode(text, allowed_special="all") if text else []
     stable = ids if final else ids[:-1]
