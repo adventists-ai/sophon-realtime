@@ -22,7 +22,8 @@ def _fwd_abs(self, f0):
     sw = self._f02sine(fn) * self.sine_amp; uv = self._f02uv(f0)
     na = uv * self.noise_std + (1 - uv) * self.sine_amp / 3; n = sw.shape[1]
     if getattr(self, "_swg", None) is None or self._swg.device != sw.device: self._swg = self.sine_waves[0].to(sw.device)
-    U = int(self.upsample_scale); buf = torch.stack([self._swg[off * U: off * U + n] for _, _, _, off in ctx])
+    U = int(self.upsample_scale); L = self._swg.shape[0]       # the noise table holds 300 s: past it, wrap around (it is random noise)
+    buf = torch.stack([self._swg[(off * U) % max(1, L - n): (off * U) % max(1, L - n) + n] for _, _, _, off in ctx])
     noise = na * buf; return sw * uv + noise, uv, noise
 def patch(hift):
     sg = hift.m_source.l_sin_gen; C = type(sg)
