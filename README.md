@@ -60,14 +60,13 @@ https://github.com/user-attachments/assets/1d9442ef-84b0-45a3-acd4-2d05a9562397
 
 ## News
 
-- **2026-11-11 · v1.1: zero-shot voice cloning** in the Tag and Flash builds. A few seconds of audio and it talks to you in that voice, in real time. [Watch the demo](#zero-shot-voice-cloning-new-in-v11)
-- **2026-11-13 · 1.2.0: long replies are spoken to the end** in Tag, Flash and E2E, with no limit on speech length. See the [changelog](CHANGELOG.md).
-- **2026-11-13 · 1.1.6: Flash-4bit, the Flash build for one 32 GB GPU** (about 30 GB in use, one or two conversations). Weights: [Hugging Face](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash-4bit), [ModelScope](https://modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash-4bit) · [how to run](flash/README.md#flash-4bit-one-32-gb-gpu). Flash now turns CUDA MPS on by default.
-- **2026-11-12 · 1.1.5:** restarts no longer recompile kernels when several installs share a machine; every part of the family now carries the same version. See the [changelog](CHANGELOG.md).
-- **2026-11-12 · 1.1.4: E2E can also be served by vLLM-Omni**, with the same commands, APIs and client as Tag and Flash. [`e2e/`](e2e/README.md)
-- **2026-11-11 · 1.1.3: E2E joins Tag and Flash as a full build, on one GPU.** New talker, first audio in about 0.25 s, 16 users per 80 GB GPU, NVV-SuperBench 0.75 (English) / 0.85 (Chinese). [Details](#e2e)
-- **2026-11-11 · 1.1.2:** `sophon-realtime serve` turns on CUDA MPS by default; long-reply and cold-start fixes. See the [changelog](CHANGELOG.md).
-- **2026-11-08 · v1.0:** first public release of the Tag, Flash and E2E (preview) builds.
+- **2026-11-13 · v1.2: long replies are spoken to the end** in Tag, Flash and E2E, however long they are; plus **Flash-4bit** for one 32 GB GPU. [Release notes](https://github.com/adventists-ai/sophon-realtime/releases/tag/v1.2.0) · [Flash-4bit](flash/README.md#flash-4bit-one-32-gb-gpu)
+- **2026-11-11 · v1.1: zero-shot voice cloning** in Tag and Flash: a few seconds of audio and it talks to you in that voice, in real time. [Watch the demo](#zero-shot-voice-cloning-new-in-v11)
+- **2026-11-11 · E2E becomes a full build on one GPU**, with first audio in about 0.25 s; it can also be served by vLLM-Omni like Tag and Flash. [Details](#e2e)
+- **2026-11-09 · Try it online** on [ModelScope Studio](https://www.modelscope.ai/studios/AdventistsAI/Sophon-Realtime), and **Live mode** (OpenAI GPT-Live compatible: hands lookups to your own backend while it keeps talking) is open source. [Live mode](live/README.md)
+- **2026-11-08 · v1.0:** first open-source release of the Tag, Flash and E2E builds.
+
+Every release, including fixes: [CHANGELOG](CHANGELOG.md) · [GitHub Releases](https://github.com/adventists-ai/sophon-realtime/releases)
 
 ## Three builds, one brain
 
