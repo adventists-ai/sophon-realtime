@@ -2,7 +2,7 @@
 
 Flash build (installed by flash/install.sh as `sophon-realtime-flash`): vllm serve <Sophon-Realtime dir> --omni --deploy-config <sophon_realtime.yaml>
 """
-__version__ = "1.1.5"
+__version__ = "1.1.6"
 ARCH = "SophonRealtimeForConditionalGeneration"
 TALKER_ARCH = "SophonTTSTalker"
 _done = False

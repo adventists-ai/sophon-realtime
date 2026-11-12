@@ -44,6 +44,25 @@ bash stop.sh
 
 Voices: `chelsie` (default), `brand`; set `language` to `zh` or `en`.
 
+## Flash-4bit: one 32 GB GPU
+
+[Sophon-Realtime-32B-Flash-4bit](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash-4bit) is this build with the thinker compressed to 4-bit
+weights. It uses about 30 GB of GPU memory instead of about 55 GB and is meant for one or two conversations at a time. Code, APIs, voices and cloning are the same.
+
+```bash
+bash install.sh
+modelscope download --model AdventistsAI/Sophon-Realtime-32B-Flash-4bit --local_dir ./model     # or, once the upload has finished: hf download adventists-ai/Sophon-Realtime-32B-Flash-4bit --local-dir ./model
+CONFIG=sophon_realtime_flash_32g.yaml GPU=0 PORT=8000 bash start.sh
+```
+
+- Against Flash (one H100, same scripts): CMMLU 85.5 vs 87.1, MMLU-Pro 57.1 vs 58.4; tag writing, speech clarity and turn-taking unchanged. First audio
+  0.24 s; two simultaneous long replies never fall behind. `/v1/realtime` answers about 0.1 s later than Flash (small cache in the 32 GB config).
+- The 32 GB config has 4096 tokens of context and image input off. With 48 GB or more, copy the config and raise `gpu_memory_utilization`,
+  `max_model_len` and `max_num_seqs`: the 4-bit weights with the full-size settings use about 42 GB.
+- Measured on an RTX PRO 6000 Blackwell with a 32 GB budget (30.5 GB in use): one conversation never stalls; two simultaneous long replies fall
+  0.3–0.75 s behind at the start. Not yet run on an actual RTX 5090; run it headless with nothing else on the GPU. 24 GB is not enough.
+- The first start needs the CUDA toolkit (`CUDA_HOME`) to compile kernels.
+
 ## Zero-shot voice cloning
 
 Give the server a short clip of the voice you want and use its name like any built-in voice. No fine-tuning, no restart.

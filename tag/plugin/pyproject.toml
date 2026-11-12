@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sophon-realtime-tag"
-version = "1.1.5"
+version = "1.1.6"
 description = "Sophon-Realtime-32B-Tag as one vLLM-Omni model: full-duplex listen + write (with sound tags) -> tag-tts streaming speech"
 requires-python = ">=3.10"
 license = "Apache-2.0"

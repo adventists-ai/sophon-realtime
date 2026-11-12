@@ -61,6 +61,7 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 ## 最新进展
 
 - **2026-11-11 · v1.1：零样本声音克隆**，Tag 版和 Flash 版均已支持。几秒钟的录音，就能用这个声音和你实时对话。[看演示视频](#零样本声音克隆v11-新增)
+- **2026-11-13 · 1.1.6：Flash-4bit，一张 32 GB 显卡就能跑的 Flash**（占用约 30 GB，面向一到两路对话）。[权重](https://modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash-4bit) · [怎么跑](flash/README_CN.md#flash-4bit一张-32-gb-显卡)。Flash 现在默认开启 CUDA MPS。
 - **2026-11-12 · 1.1.5：** 同一台机器上装了多个环境时，重启不再重复编译计算核；全家各部分的版本号统一为同一个。见[更新日志](CHANGELOG.md)。
 - **2026-11-12 · 1.1.4：E2E 版也可以用 vLLM-Omni 部署**，命令、接口和客户端与 Tag、Flash 相同。[`e2e/`](e2e/README_CN.md)
 - **2026-11-11 · 1.1.3：E2E 版与 Tag、Flash 并列为正式版本，单卡即可运行。** 新的说话头，单路首包约 0.25 秒，一张 80 GB 显卡 16 路并发，NVV-SuperBench 英文 0.75 / 中文 0.85。[详情](#e2e)

@@ -1,6 +1,6 @@
 #!/bin/bash
 # Start Sophon-Realtime-32B-Flash on ONE GPU (80 GB: H100 / H800 / A100 80G).
-# usage: bash start.sh        env: GPU=0  PORT=8000  MPS=0
+# usage: bash start.sh        env: GPU=0  PORT=8000  MPS=1
 # several GPUs: one instance per GPU, e.g. GPU=0 PORT=8000 bash start.sh; GPU=1 PORT=8001 bash start.sh  (put a load balancer in front)
 # endpoints: ws://HOST:PORT/v1/realtime (full duplex)   http://HOST:PORT/v1/chat/completions (audio in -> text + audio out)
 HERE=$(cd "$(dirname "$0")" && pwd); cd "$HERE"; mkdir -p logs
@@ -11,7 +11,7 @@ CONFIG=${CONFIG:-sophon_realtime_flash_1gpu.yaml}
 # vLLM compiles a few kernels at the first start (several minutes) and caches them. Keep the cache with this install: the default
 # cache in ~/.cache is shared by every vLLM install of the user, and installs with different paths rebuild it at each start.
 export FLASHINFER_WORKSPACE_BASE=${FLASHINFER_WORKSPACE_BASE:-$HERE}
-if [ "${MPS:-0}" = 1 ] && command -v nvidia-cuda-mps-control >/dev/null; then   # optional: the three stages share the GPU through MPS
+if [ "${MPS:-1}" = 1 ] && command -v nvidia-cuda-mps-control >/dev/null; then   # the three stages share the GPU concurrently (MPS=0 turns it off)
   export CUDA_MPS_PIPE_DIRECTORY=$HERE/.mps/gpu$GPU/pipe CUDA_MPS_LOG_DIRECTORY=$HERE/.mps/gpu$GPU/log; mkdir -p $CUDA_MPS_PIPE_DIRECTORY $CUDA_MPS_LOG_DIRECTORY
   echo get_server_list | nvidia-cuda-mps-control >/dev/null 2>&1 || CUDA_VISIBLE_DEVICES=$GPU nvidia-cuda-mps-control -d
   if echo get_server_list | nvidia-cuda-mps-control >/dev/null 2>&1; then DEV=0; echo "MPS on (GPU $GPU)"; else unset CUDA_MPS_PIPE_DIRECTORY CUDA_MPS_LOG_DIRECTORY; fi

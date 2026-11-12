@@ -43,6 +43,25 @@ bash stop.sh
 
 音色：`chelsie`（默认）、`brand`；语言用 `language` 指定（`zh` / `en`）。
 
+## Flash-4bit：一张 32 GB 显卡
+
+[Sophon-Realtime-32B-Flash-4bit](https://modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash-4bit) 是把本版本的思考器压成 4 位权重的版本，
+占用显存约 30 GB（完整版约 55 GB），面向一到两路对话。代码、接口、音色和克隆都相同。
+
+```bash
+bash install.sh
+modelscope download --model AdventistsAI/Sophon-Realtime-32B-Flash-4bit --local_dir ./model
+CONFIG=sophon_realtime_flash_32g.yaml GPU=0 PORT=8000 bash start.sh
+```
+
+- 与 Flash 对比（一张 H100，同一套脚本）：CMMLU 85.5 对 87.1，MMLU-Pro 57.1 对 58.4；写标签、语音清晰度、轮次判断没有变化。首包 0.24 秒；
+  两路同时说长回复不会落后。`/v1/realtime` 比 Flash 慢约 0.1 秒（32 GB 配置的缓存较小）。
+- 32 GB 配置的上下文是 4096 token，图像输入关闭。显存 48 GB 以上时，可以复制配置并调大 `gpu_memory_utilization`、`max_model_len`、`max_num_seqs`：
+  4 位权重配完整版的设置占约 42 GB。
+- 在 RTX PRO 6000 Blackwell 上按 32 GB 预算实测（占用 30.5 GB）：一路对话没有卡顿；两路同时说长回复时开头落后 0.3–0.75 秒。
+  尚未在真实的 RTX 5090 上运行过；请不要接显示器、不要同时跑别的程序。24 GB 不够。
+- 第一次启动需要 CUDA 工具包（`CUDA_HOME`）来编译内核。
+
 ## 零样本音色克隆
 
 给一段想要的声音，起个名字，就能像内置音色一样使用。不用微调，不用重启。
