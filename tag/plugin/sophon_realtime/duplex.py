@@ -40,6 +40,7 @@ RES_TIMEOUT = float(os.environ.get("SOPHON_RES_TIMEOUT", "15"))  # an append not
 SPEC_MIN_SPEECH = float(os.environ.get("SOPHON_SPEC_MIN_SPEECH", "0.3"))   # only draft speculatively once the user has spoken this long (s)
 MERGE_WINDOW = float(os.environ.get("SOPHON_MERGE_WINDOW", "2.0"))
 FALLBACK_S = float(os.environ.get("SOPHON_TURN_FALLBACK", "2.0"))
+RETRY_MAX = int(os.environ.get("SOPHON_RETRY_MAX", "3"))     # resends of a refused reply append
 IGNORE_SHORT = os.environ.get("SOPHON_IGNORE_SHORT", "0") == "1"     # on fallback, ignore short backchannels (default off: leave it to the model; fallback replies as usual)
 from .env import port as _port, vision as _vision
 from . import tools as _tools
@@ -327,8 +328,17 @@ class SophonBuffer(PcmAppendBuffer):
             return
         if sid:                                                # already released as the answer: resend it as a normal reply
             payload = {k: v for k, v in payload.items() if k != "spec_id"}
-        self.retry = payload                                   # committed reply (utterance already moved out of self.utt): resend it as is
+        n = int(payload.get("sophon_retry", 0)) + 1
+        if n > RETRY_MAX:                                      # the same append keeps being refused (e.g. a deterministic plugin error): give up instead of resending forever
+            logger.warning("sophon duplex: reply append refused %d times, dropping it", n - 1); return
+        self.retry = dict(payload, sophon_retry=n)             # committed reply (utterance already moved out of self.utt): resend it as is
         logger.info("sophon duplex: reply append was not accepted, will resend")
+
+    def _undo_merge(self):
+        """The turn is discarded (not real speech): a merge & abort of the previous reply it triggered no longer applies -- that reply stands."""
+        if self.mute_rid is not None or self.merge_pending:
+            logger.info("sophon duplex: discarded turn -> previous reply kept (merge undone)")
+        self.mute_rid = None; self.merge_pending = False
 
     def clear_force_listen(self): pass
     def has_pending(self): return bool(self.utt)
@@ -445,7 +455,7 @@ class SophonBuffer(PcmAppendBuffer):
                     logger.info("sophon duplex: ignore short non-turn sound (speech %.0f ms, P(backchannel)=%.2f, max P(finished)=%.2f)",
                                 self.speech_ms, self.last_pb, self.max_pf)
                     if self.spec_id is not None: self.owner_drop(self.spec_id)
-                    self._reset_turn(); return None
+                    self._undo_merge(); self._reset_turn(); return None
                 if (BC_RESUME and self.cut is not None and time.monotonic() - self.cut["t"] < BC_WINDOW + FALLBACK_S
                         and self.speech_ms < 1500 and self.last_pb >= BC_THR and self.last_pb > self.max_pf):
                     self.resume_pending = True
@@ -562,7 +572,7 @@ class SophonDataPlane(DuplexDataPlane):
                         with buf.lock: buf.decision_ready = True      # listen event handed to the framework: the reply may now be sent
                     self.plugin._reqs.pop(rid, None)
                 continue
-            if info is not None and info.get("buf") is not None and info["buf"].mute_rid == rid:
+            if info is not None and info.get("buf") is not None and info["buf"].mute_rid == rid and not info.get("calls"):
                 continue                                      # premature-reply recovery: this reply is void, stop sending it
             text = getattr(completion, "text", "") if stage_id == 0 else ""
             mm = getattr(output, "multimodal_output", None)
@@ -789,8 +799,10 @@ class SophonRealtimeDuplexPlugin(DuplexModelPlugin):
             with buf.lock:
                 mute = buf.mute_rid; buf.mute_rid = None
             if mute is not None:      # premature-reply recovery: void the previous reply (no history; its user speech is already merged into this turn's buffer)
-                if mute in self._reqs: self._reqs.pop(mute, None)
-                elif buf.history: buf.history.pop(); buf.last_said = buf.history[-1]["a_text"] if buf.history else ""
+                if mute in self._reqs:
+                    if not self._reqs[mute].get("calls"): self._reqs.pop(mute, None)
+                elif buf.history and not (buf.history[-1].get("tool_calls") or buf.history[-1].get("chain")):
+                    buf.history.pop(); buf.last_said = buf.history[-1]["a_text"] if buf.history else ""
             for rid0, info0 in list(self._reqs.items()):   # a previous reply still pending = interrupted: record the text spoken so far in history (unreleased speculative replies are simply dropped)
                 if info0.get("kind") == "reply" and info0.get("buf") is buf:
                     if info0.get("released"): self._finish_reply(rid0, completed=False)
@@ -819,6 +831,14 @@ class SophonRealtimeDuplexPlugin(DuplexModelPlugin):
         audios = []
         if payload.get("tool_followup"):
             # a tool result came back: the model answers from history (user speech, its call, the result) -- no new user speech
+            if buf is not None and buf.history and not (buf.history[-1].get("chain") and "a_text" not in buf.history[-1]["chain"][-1]):
+                with buf.lock:                               # a newer turn finished after the result arrived: move the unanswered result onto it
+                    for h in reversed(buf.history[:-1]):
+                        ch = h.get("chain")
+                        if ch and "a_text" not in ch[-1]:
+                            buf.history[-1].setdefault("chain", []).append(ch.pop())
+                            if not ch: h.pop("chain", None)
+                            logger.info("sophon tool: result moved to the latest turn for the follow-up"); break
             if buf is None or not buf.history or not buf.history[-1].get("chain"):
                 raise DuplexRuntimeConfigError("Sophon duplex: tool follow-up without a pending tool result")
             for h in buf.history: self._hist(h, msgs, audios)
@@ -1022,6 +1042,8 @@ class SophonRealtimeDuplexPlugin(DuplexModelPlugin):
     def _announce(self, info):
         """Client mode: as soon as the thinker has finished writing, publish its tool calls (the talker may still be speaking the lead-in)."""
         buf = info.get("buf"); info["announced"] = True
+        if buf is not None and _tools.has_tool(info.get("raw", "")):
+            with buf.lock: buf.prev_user = None           # it called a tool: speech right after it is a new turn, never a merge & abort of this reply
         calls = _tools.parse_tool_calls(info.get("raw", "")); info["calls"] = calls
         if not calls or buf is None or buf.tool_mode != "client" or not buf.bridge_key:
             if calls and (buf is None or buf.tool_mode != "client"): info["announced"] = False   # mock mode: parse again at the end as before

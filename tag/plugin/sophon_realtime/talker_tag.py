@@ -50,10 +50,10 @@ def _first(x, default=None):
 
 
 DEBUG = os.environ.get("SOPHON_TAG_DEBUG", "0") == "1"
-# Long replies are spoken in segments with a fresh talker context each (see segreg); a reply ends cleanly after at most
-# SOPHON_MAX_SPEECH_S seconds of speech in total (a safety net: 25 speech tokens per second, 0 = no limit).
+# Long replies are spoken in segments with a fresh talker context each (see segreg), so a reply is spoken in full however
+# long the text is (the thinker's max_tokens bounds it). SOPHON_MAX_SPEECH_S > 0 ends a reply after that many seconds.
 from . import segreg
-MAX_SPEECH_TOK = int(float(os.environ.get("SOPHON_MAX_SPEECH_S", "300")) * 25)
+MAX_SPEECH_TOK = int(float(os.environ.get("SOPHON_MAX_SPEECH_S", "0")) * 25)
 SEEK_TOK = int(segreg.SEEK_S * 25)
 # Safety net: a segment never speaks longer than this (the talker degrades after ~55 s of context).
 SEG_MAX_TOK = int(float(os.environ.get("SOPHON_SEG_MAX_S", "50")) * 25)
