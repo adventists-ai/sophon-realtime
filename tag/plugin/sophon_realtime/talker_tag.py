@@ -264,6 +264,14 @@ class SophonTagTalker(CosyVoice3Model):
             st.fin = True
 
     # ------------------------------------------------------------------ preprocess: choose this step's input embedding
+    def _touch(self, rid):
+        """The state of rid, moved to the newest end: states are dropped oldest first (MAX_STATES), and a long reply must
+        not lose its state to the many short requests that start while it is speaking."""
+        st = self._st.pop(rid, None)
+        if st is not None:
+            self._st[rid] = st
+        return st
+
     def preprocess(self, input_ids: torch.Tensor, input_embeds: torch.Tensor | None, **info: Any):
         info = self._flat(info)
         rid = info.get("request_id")
@@ -276,7 +284,7 @@ class SophonTagTalker(CosyVoice3Model):
             emb = self._semb(input_ids.tolist()) if input_embeds is None else input_embeds
             return input_ids, emb, {}
         if is_prefill:
-            st = self._st.get(rid)
+            st = self._touch(rid)
             if st is not None and st.restart:          # next segment of a long reply: same request, fresh LM context
                 st.new_segment(); segreg.RESTARTED.discard(rid)
             else:
@@ -298,7 +306,7 @@ class SophonTagTalker(CosyVoice3Model):
             st.dummy = False
             self._order.append(rid); self._prefill_rows.add(rid)
             return input_ids, pre.to(input_embeds.dtype if input_embeds is not None else pre.dtype), {}
-        st = self._st.get(rid)
+        st = self._touch(rid)
         if st is None:      # unknown (should not happen): behave like the native decode step
             self._order.append(rid)
             emb = self._semb(input_ids.tolist())

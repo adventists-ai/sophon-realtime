@@ -49,6 +49,7 @@ class SophonTTSTalker(Qwen3TTSTalkerForConditionalGeneration):
         self._missing: set[str] = set()
         self._bad: set[tuple[str, float]] = set()
         self._force_eos: set[str] = set()
+        self._text_open: set[str] = set()     # the end of their text (tts_eos) is not fed yet: no codec EOS (it would end the reply)
         # Long replies in segments (segreg): per request {"start": first text id of the segment, "end": cut or None}
         self._seg: dict[str, dict] = {}
         self._pieces: dict[int, str] = {}
@@ -151,7 +152,7 @@ class SophonTTSTalker(Qwen3TTSTalkerForConditionalGeneration):
         cfg = self.config; tc = self.talker_config
         ids = self._ids(info); fin = self._fin(info)
         rid = info.get("request_id")
-        seg = self._seg.get(rid)
+        seg = self._seg.pop(rid, None)     # re-inserted below at the newest end: oldest entries are dropped first
         if seg is not None and len(seg.get("ids", ())) > len(ids):   # restarted after the thinker finished: the request no longer carries the text
             ids, fin = seg["ids"], seg["fin"]
         if seg is not None and seg.get("end") is not None and rid in segreg.RESTARTED:   # the next segment of a long reply
@@ -161,7 +162,7 @@ class SophonTTSTalker(Qwen3TTSTalkerForConditionalGeneration):
             self._seg[rid] = {"start": 0, "end": None, "ids": ids, "fin": fin}
             if len(self._seg) > 512:
                 for k in list(self._seg)[:len(self._seg) - 512]:
-                    self._seg.pop(k, None)
+                    self._seg.pop(k, None); self._text_open.discard(k)
         start, end = self._segment(rid, ids, 0, fin)
         lim = len(ids) if end is None else end
         seg_ids = ids[start:lim]
@@ -175,6 +176,8 @@ class SophonTTSTalker(Qwen3TTSTalkerForConditionalGeneration):
         pre = torch.cat([self._te(ROLE, dev), torch.cat([pad.expand(codec.shape[0] - 2, -1), bos], 0) + codec[:-1], first + codec[-1:]], 0)
         tail = [self._te(seg_ids[1:], dev)] if len(seg_ids) > 1 else []
         seg_eos = end is not None
+        if rid is not None:
+            (self._text_open.discard if fin or seg_eos else self._text_open.add)(rid)
         if fin or seg_eos:
             tail.append(eos)
             if seg_eos:
@@ -210,9 +213,11 @@ class SophonTTSTalker(Qwen3TTSTalkerForConditionalGeneration):
         steps = int(meta.get("sophon_steps", 0) or 0) + 1; post = int(meta.get("sophon_post", 0) or 0) + (1 if eos_done else 0)
         meta["sophon_steps"] = steps; meta["sophon_post"] = post
         rid = info.get("request_id")
-        seg = self._seg.get(rid)
-        if seg is not None and len(seg.get("ids", ())) > len(ids):
-            ids, fin = seg["ids"], seg["fin"]
+        seg = self._seg.pop(rid, None)
+        if seg is not None:
+            self._seg[rid] = seg                          # newest end: a long reply keeps its entry while short requests come and go
+            if len(seg.get("ids", ())) > len(ids):
+                ids, fin = seg["ids"], seg["fin"]
         start, end = self._segment(rid, ids, n, fin)
         lim = len(ids) if end is None else end
         if rid is not None and eos_done and steps > FRAMES_PER_TOK * max(1, lim - start) + 60:
@@ -224,6 +229,7 @@ class SophonTTSTalker(Qwen3TTSTalkerForConditionalGeneration):
             add.append(self._te(ids[n:lim], device)); n = lim
         if (fin or end is not None) and n >= lim and not eos_done:
             add.append(self._te([self.config.tts_eos_token_id], device)); eos_done = True
+            self._text_open.discard(rid)
             if end is not None:
                 segreg.AT_EOS.add(rid)                    # end of a segment: its end token restarts the request
         hs0 = info.get("hidden_states"); tail0 = hs0.get("trailing_text") if isinstance(hs0, dict) else None
@@ -255,14 +261,17 @@ class SophonTTSTalker(Qwen3TTSTalkerForConditionalGeneration):
     # ---------- runaway guard: force codec EOS when the cap is reached ----------
     def set_batch_req_ids(self, req_ids) -> None:
         super().set_batch_req_ids(req_ids)
-        if self._force_eos:
+        if self._force_eos or self._text_open:
             live = set(self._batch_req_ids)
             self._force_eos &= live
 
     def compute_logits(self, hidden_states, sampling_metadata: Any = None):
         logits = super().compute_logits(hidden_states, sampling_metadata)
-        if logits is None or not self._force_eos:
+        if logits is None or not (self._force_eos or self._text_open) or len(self._batch_req_ids) != logits.shape[0]:
             return logits
+        hold = [i for i, r in enumerate(self._batch_req_ids) if r in self._text_open and r not in self._force_eos]
+        if hold:      # the thinker is still writing: waiting for text is not the end of the reply
+            logits[torch.tensor(hold, device=logits.device), self._codec_eos_token_id] = -1e4
         rows = [i for i, r in enumerate(self._batch_req_ids) if r in self._force_eos] if len(self._batch_req_ids) == logits.shape[0] else []
         if rows:
             idx = torch.tensor(rows, device=logits.device)
