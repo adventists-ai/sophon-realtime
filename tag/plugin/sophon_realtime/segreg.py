@@ -45,13 +45,9 @@ def speech_seconds(text: str) -> float:
 def find_cut(ids: list[int], start: int, lo: int, piece, fin: bool) -> int | None:
     """Where the segment that starts at ids[start] ends (an index > lo, the text fed so far), or None (not decidable yet,
     or the reply ends first). From SEEK_S seconds of estimated speech: after the next sentence end; from FORCE_S: after
-    a clause end within the next 12 tokens, else right there. piece(id) -> the token's text.
-    While the reply is still being written, a cut is only decided with AHEAD_MIN tokens after it: the next segment must
-    start with text in hand (a talker that starts with almost no text may take it for the end of the reply)."""
+    a clause end within the next 12 tokens, else right there. piece(id) -> the token's text."""
     text = ""
     for j in range(start, len(ids)):
-        if not fin and len(ids) - (j + 1) < max(AHEAD_MIN, 1):
-            return None
         text += piece(ids[j]); sec = speech_seconds(text)
         if j < lo or sec < SEEK_S:
             continue
@@ -60,7 +56,7 @@ def find_cut(ids: list[int], start: int, lo: int, piece, fin: bool) -> int | Non
         if (p and p[-1] in END) or (p.endswith(".") and nxt[:1].isspace()):        # "3.5" is no sentence end
             return None if fin and j + 1 >= len(ids) else j + 1
         if sec >= FORCE_S:
-            soft = [k for k in range(j, min(len(ids) - (0 if fin else AHEAD_MIN), j + 12)) if piece(ids[k]).rstrip(" ")[-1:] in tuple(SOFT + ".")]
+            soft = [k for k in range(j, min(len(ids), j + 12)) if piece(ids[k]).rstrip(" ")[-1:] in tuple(SOFT + ".")]
             return soft[0] + 1 if soft else j + 1
     return None
 
