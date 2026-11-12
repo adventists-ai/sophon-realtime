@@ -51,7 +51,7 @@ weights. It uses about 30 GB of GPU memory instead of about 55 GB and is meant f
 
 ```bash
 bash install.sh
-modelscope download --model AdventistsAI/Sophon-Realtime-32B-Flash-4bit --local_dir ./model     # or, once the upload has finished: hf download adventists-ai/Sophon-Realtime-32B-Flash-4bit --local-dir ./model
+hf download adventists-ai/Sophon-Realtime-32B-Flash-4bit --local-dir ./model     # or: modelscope download --model AdventistsAI/Sophon-Realtime-32B-Flash-4bit --local_dir ./model
 CONFIG=sophon_realtime_flash_32g.yaml GPU=0 PORT=8000 bash start.sh
 ```
 
