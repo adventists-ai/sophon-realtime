@@ -50,13 +50,19 @@ def _first(x, default=None):
 
 
 DEBUG = os.environ.get("SOPHON_TAG_DEBUG", "0") == "1"
-# Floor for long replies: one reply speaks at most this many seconds (25 speech tokens per second), then ends cleanly.
-# The talker's quality falls apart after about 55-60 s of continuous speech (long-context tests, 2026-11-11), so stay below it.
-MAX_SPEECH_TOK = int(float(os.environ.get("SOPHON_MAX_SPEECH_S", "50")) * 25)
+# Long replies are spoken in segments with a fresh talker context each (see segreg); a reply ends cleanly after at most
+# SOPHON_MAX_SPEECH_S seconds of speech in total (a safety net: 25 speech tokens per second, 0 = no limit).
+from . import segreg
+MAX_SPEECH_TOK = int(float(os.environ.get("SOPHON_MAX_SPEECH_S", "300")) * 25)
+SEEK_TOK = int(segreg.SEEK_S * 25)
+# Safety net: a segment never speaks longer than this (the talker degrades after ~55 s of context).
+SEG_MAX_TOK = int(float(os.environ.get("SOPHON_SEG_MAX_S", "50")) * 25)
+_END = "。！？!?；;…\n"     # sentence ends
+_SOFT = "，,、：:"         # clause ends
 
 
 class _St:
-    __slots__ = ("t0", "nspeech", "queue", "out", "next_fill", "text", "pos", "fin", "phase", "last_fed", "voice", "steps", "dummy", "starved", "done_eos", "last_tok")
+    __slots__ = ("t0", "nspeech", "queue", "out", "next_fill", "text", "pos", "fin", "phase", "last_fed", "voice", "steps", "dummy", "starved", "done_eos", "last_tok", "seg_speech", "seg_end", "restart", "seg_start")
 
     def __init__(self, voice):
         self.queue: list[torch.Tensor] = []   # pending input embeddings (fed one per step)
@@ -75,6 +81,17 @@ class _St:
         self.last_tok = None
         self.t0 = __import__("time").monotonic()
         self.nspeech = 0
+        self.seg_speech = 0                   # speech tokens in the current segment
+        self.seg_end = None                   # text index where the current segment ends (None: not decided yet)
+        self.restart = False                  # segment spoken, waiting for the scheduler to restart the request
+        self.seg_start = 0                    # text index where the current segment starts
+
+    def new_segment(self):
+        """Fresh LM state for the next segment (text, voice and totals are kept)."""
+        self.queue = []; self.out = []; self.next_fill = 15; self.phase = "bi"; self.last_fed = None
+        self.dummy = False; self.starved = 0; self.done_eos = False; self.last_tok = None
+        self.pos = self.seg_end if self.seg_end is not None else self.pos
+        self.seg_speech = 0; self.seg_end = None; self.restart = False; self.seg_start = self.pos
 
 
 class SophonTagTalker(CosyVoice3Model):
@@ -96,6 +113,9 @@ class SophonTagTalker(CosyVoice3Model):
         if self.model_stage == "cosyvoice3_talker":
             tok = get_qwen_tokenizer(os.path.join(self.model_dir, self.config.qwen_pretrain_path), skip_special_tokens=True, version="cosyvoice3")
             self._prompt_ids = tok.encode(LM_PROMPT, allowed_special="all")
+            self._tok = tok; self._pieces: dict[int, str] = {}
+            if SEEK_TOK > 0:
+                segreg.install(logger)
             logger.info("SophonTagTalker: LM prompt %d tokens (prefill span %d); voices dir %s", len(self._prompt_ids), len(self._prompt_ids) + 1, self._voice_dir)
             if os.environ.get("SOPHON_VOICE_SCAN", "1") == "1":     # clip voices (voices/<name>.wav) are prepared in the background
                 from . import voices
@@ -258,13 +278,17 @@ class SophonTagTalker(CosyVoice3Model):
             emb = self._semb(input_ids.tolist()) if input_embeds is None else input_embeds
             return input_ids, emb, {}
         if is_prefill:
-            lang = str(_first(info.get("language"), "zh") or "zh").lower()[:2]
-            voice = self._voice(str(_first(info.get("speaker"), "") or ""), lang)
-            st = _St(voice)
-            if len(self._st) > MAX_STATES:
-                for k in list(self._st)[: len(self._st) - MAX_STATES]:
-                    self._st.pop(k, None)
-            self._st[rid] = st
+            st = self._st.get(rid)
+            if st is not None and st.restart:          # next segment of a long reply: same request, fresh LM context
+                st.new_segment()
+            else:
+                lang = str(_first(info.get("language"), "zh") or "zh").lower()[:2]
+                voice = self._voice(str(_first(info.get("speaker"), "") or ""), lang)
+                st = _St(voice)
+                if len(self._st) > MAX_STATES:
+                    for k in list(self._st)[: len(self._st) - MAX_STATES]:
+                        self._st.pop(k, None)
+                self._st[rid] = st
             self._sync_text(st, info)
             pre = torch.cat([self._semb([self.SOS]), self._temb(self._prompt_ids)], 0)
             if pre.shape[0] != span:
@@ -282,6 +306,7 @@ class SophonTagTalker(CosyVoice3Model):
             emb = self._semb(input_ids.tolist())
             return input_ids, emb, {}
         self._sync_text(st, info)
+        segreg.AHEAD[rid] = len(st.text) - st.pos
         if st.queue:
             emb = st.queue.pop(0)
             st.dummy = bool(st.queue)
@@ -325,15 +350,19 @@ class SophonTagTalker(CosyVoice3Model):
 
     def _need_text(self, st: _St):
         """After a fill token: queue the next 5 text tokens, or go to the final phase, or (rarely) starve."""
-        avail = len(st.text) - st.pos
+        if SEEK_TOK > 0 and st.seg_end is None and st.pos > st.seg_start:
+            self._plan_segment_end(st)
+        lim = len(st.text) if st.seg_end is None else st.seg_end
+        fin = st.fin or st.seg_end is not None
+        avail = lim - st.pos
         n = self.MIX[0]
         if avail >= n:
             st.queue = list(self._temb(st.text[st.pos: st.pos + n]).split(1, 0)); st.pos += n
             return
-        if st.fin:
+        if fin:
             st.phase = "final"
-            rest = list(self._temb(st.text[st.pos:]).split(1, 0)) if avail > 0 else []
-            st.pos = len(st.text)
+            rest = list(self._temb(st.text[st.pos:lim]).split(1, 0)) if avail > 0 else []
+            st.pos = lim
             # official: lm_input = concat([lm_input, text_cache, task_id]) where lm_input is the (already consumed) input
             # that produced the fill token -> it is fed once more.
             dup = [st.last_fed] if st.last_fed is not None else []
@@ -347,6 +376,34 @@ class SophonTagTalker(CosyVoice3Model):
             st.queue = list(self._temb(st.text[st.pos:]).split(1, 0)); st.pos = len(st.text)
         else:
             st.queue = [st.last_fed] if st.last_fed is not None else [self._semb([self.FILL])]
+
+    def _piece(self, tid: int) -> str:
+        p = self._pieces.get(tid)
+        if p is None:
+            p = self._pieces[tid] = self._tok.decode([tid])
+        return p
+
+    def _sentence_end(self, txt: list[int], j: int) -> bool:
+        p = self._piece(txt[j]).rstrip(" ")
+        if p and p[-1] in _END:
+            return True
+        return p.endswith(".") and j + 1 < len(txt) and self._piece(txt[j + 1])[:1].isspace()     # "3.5" is no end
+
+    def _plan_segment_end(self, st: _St):
+        """Where the current segment ends, by the spoken length of the text fed so far in it (the talker is fed text
+        well ahead of its speech, so counting speech would cut too late): from SEEK_S at the next sentence end, from
+        FORCE_S at the next clause end within a few tokens, or right here. No cut at the very end of a finished reply."""
+        from .proc import speech_seconds
+        txt = st.text
+        fed = speech_seconds(self._tok.decode(txt[st.seg_start:st.pos]))
+        if fed < segreg.SEEK_S:
+            return
+        end = next((j + 1 for j in range(st.pos, len(txt)) if self._sentence_end(txt, j)), None)
+        if end is None and fed >= segreg.FORCE_S:
+            near = range(st.pos, min(len(txt), st.pos + 12))
+            end = next((j + 1 for j in near if self._piece(txt[j]).rstrip(" ")[-1:] in tuple(_SOFT + ".")), st.pos)
+        if end is not None and not (st.fin and end >= len(txt)):
+            st.seg_end = max(end, st.pos)
 
     def sample(self, logits, sampling_metadata):
         if logits is None or logits.numel() == 0 or self.model_stage != "cosyvoice3_talker":
@@ -367,10 +424,17 @@ class SophonTagTalker(CosyVoice3Model):
             if st is None:
                 continue
             st.steps += 1
-            if MAX_SPEECH_TOK > 0 and st.nspeech >= MAX_SPEECH_TOK and not st.done_eos:
+            if st.restart:
+                forced[i] = self.FILL                  # waiting for the restart: nothing to say
+            elif MAX_SPEECH_TOK > 0 and st.nspeech >= MAX_SPEECH_TOK and not st.done_eos:
                 forced[i] = self.EOS
                 if st.nspeech == MAX_SPEECH_TOK:
                     logger.info("SophonTagTalker: reply reached SOPHON_MAX_SPEECH_S (%d speech tokens), ending it", MAX_SPEECH_TOK)
+            elif SEEK_TOK > 0 and st.seg_speech >= SEG_MAX_TOK and not st.done_eos:
+                forced[i] = self.EOS
+                if st.seg_end is None:                 # cut here (the rest of the text goes to the next segment)
+                    st.seg_end = st.pos; st.phase = "final"
+                logger.warning("SophonTagTalker: segment reached SOPHON_SEG_MAX_S, cutting it")
             elif st.dummy:
                 forced[i] = self.FILL
             elif st.phase == "bi" and st.next_fill != -1 and len(st.out) == st.next_fill:
@@ -413,9 +477,16 @@ class SophonTagTalker(CosyVoice3Model):
         for i, st in enumerate(sts):
             if forced[i] is not None:
                 out[i] = forced[i]
-            if st is None or st.dummy:
+            if st is None or st.dummy or st.restart:
                 continue
             t = int(out[i])
+            capped = MAX_SPEECH_TOK > 0 and st.nspeech >= MAX_SPEECH_TOK
+            if t == self.EOS and st.phase == "final" and st.seg_end is not None and not capped:
+                # end of a segment, not of the reply: restart the request with a fresh LM context
+                out[i] = self.FILL; st.restart = True
+                if rids[i] is not None:
+                    segreg.PENDING.add(rids[i])
+                continue
             if st.phase == "bi":
                 if t == self.FILL and forced[i] is None:
                     st.next_fill = len(st.out) + self.MIX[1] + 1
@@ -433,7 +504,7 @@ class SophonTagTalker(CosyVoice3Model):
             if t == self.EOS:
                 st.done_eos = True
             if t < self.S:
-                st.nspeech += 1
+                st.nspeech += 1; st.seg_speech += 1
                 if DEBUG and st.nspeech in (1, 13, 33, 73):
                     logger.info("tagdbg %s speech#%d at %.3fs steps=%d text=%d/%d fin=%s", str(rids[i])[-12:], st.nspeech, __import__("time").monotonic() - st.t0, st.steps, st.pos, len(st.text), st.fin)
         sampled = torch.tensor(out, device=dev, dtype=torch.int32)

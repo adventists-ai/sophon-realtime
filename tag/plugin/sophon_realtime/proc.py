@@ -209,29 +209,75 @@ _MISSING: set[str] = set()
 
 
 def talker2code2wav_async_chunk(transfer_manager, multimodal_output, request, is_finished: bool = False):
-    """vLLM-Omni's CosyVoice3 chunker, with the voice prompt (precomputed flow conditioning) supplied on the first call."""
+    """Talker tokens -> code2wav chunks: vLLM-Omni's CosyVoice3 chunk schedule (first hop + prompt pad, pre-lookahead,
+    growing hop), with three differences:
+    - the voice prompt (precomputed flow conditioning) is supplied on the first call;
+    - incremental: each call reads only the new talker tokens and sends codec_left_context_frames of left context plus
+      the new hop (the stock chunker re-reads and re-sends every token spoken so far, so its cost per call grows with
+      the reply and a long reply falls behind real time);
+    - long replies are spoken in segments (segreg): the request's output restarts at every segment, the segments spoken
+      before are on request._sophon_prev_out, so the token stream read here stays cumulative."""
     from vllm_omni.model_executor.stage_input_processors import cosyvoice3 as _cv
-    state = transfer_manager.request_payload.get(request.external_req_id)
-    if not isinstance(state, dict) or "_cosyvoice3_async_state" not in state:
-        multimodal_output = _voice_payload(request)
-    payload = _cv.talker2code2wav_async_chunk(transfer_manager, multimodal_output, request, is_finished)
-    return _bound_left_context(transfer_manager, payload)
-
-
-def _bound_left_context(transfer_manager, payload):
-    """Honour codec_left_context_frames (as vLLM-Omni's Qwen3-Omni / Qwen3-TTS chunkers do): the stock CosyVoice3
-    chunker sends every token spoken so far with each chunk, so the flow decoder re-runs over the whole reply and the
-    cost per chunk grows with its length. Keep only the last N already-decoded tokens as left context."""
-    meta = getattr(payload, "meta", None); codes = getattr(payload, "codes", None)
-    off = getattr(meta, "left_context_size", None) if meta is not None else None
-    audio = getattr(codes, "audio", None) if codes is not None else None
-    if off is None or audio is None:
-        return payload
+    from vllm_omni.data_entry_keys import CodesStruct
+    rid = request.external_req_id
+    finished = bool(is_finished or request.is_finished())
     cfg = getattr(getattr(transfer_manager, "connector", None), "config", {}) or {}
     cfg = cfg.get("extra", cfg) if isinstance(cfg, dict) else {}
-    left = int(cfg.get("codec_left_context_frames", 25))
-    drop = int(off) - left
-    if left > 0 and drop > 0:
-        codes.audio = audio[drop:]
-        meta.left_context_size = left
+    hop0 = int(cfg.get("codec_chunk_frames", 25)); vocab = int(cfg.get("codec_vocab_size", 6561))
+    look = int(cfg.get("codec_pre_lookahead_frames", 3)); max_hop = int(cfg.get("codec_max_chunk_frames", 4 * hop0))
+    scale = int(cfg.get("codec_stream_scale_factor", 2)); left = int(cfg.get("codec_left_context_frames", 25))
+    rs = transfer_manager.request_payload.get(rid)
+    if not isinstance(rs, dict) or "_sophon_chunk" not in rs:
+        mm = _voice_payload(request)["embed"]
+        pp = {k: _cv._to_cpu_tensor(mm.get(k)) for k in ("speech_token", "speech_feat", "embedding")}
+        st_, sf_ = _cv.unpad_prompt_conditioning(pp["speech_token"], pp["speech_feat"], mm.get("speech_token_len"))
+        pp["speech_token"] = st_
+        if sf_ is not None:
+            pp["speech_feat"] = sf_
+        plen = int(pp["speech_token"].shape[1]) if pp["speech_token"] is not None and pp["speech_token"].ndim >= 2 else 0
+        pad = ((plen + hop0 - 1) // hop0) * hop0 - plen if plen > 0 else 0
+        rs = {"_sophon_chunk": {"seen": 0, "frames": [], "emitted": 0, "hop": hop0, "pad": pad, "sent_prompt": False,
+                                "done": False, "prompt": pp}}
+        transfer_manager.request_payload[rid] = rs
+    s = rs["_sophon_chunk"]
+    if s["done"]:
+        return None
+    prev = getattr(request, "_sophon_prev_out", None) or ()
+    out = request.output_token_ids
+    total = len(prev) + len(out)
+    if total > s["seen"]:
+        k = s["seen"]
+        new = (list(prev[k:]) + list(out)) if k < len(prev) else list(out[k - len(prev):])
+        s["seen"] = total
+        s["frames"].extend(int(t) for t in new if 0 <= int(t) < vocab)
+    frames = s["frames"]; n = len(frames); em = s["emitted"]
+
+    def embed_once():
+        if s["sent_prompt"]:
+            return None
+        s["sent_prompt"] = True
+        return _cv._build_prompt_embed_struct(s["prompt"])
+
+    if finished and n <= em:
+        s["done"] = True
+        return OmniPayloadStruct(codes=CodesStruct(audio=torch.empty(0, dtype=torch.long)),
+                                 meta=MetaStruct(finished=torch.tensor(True, dtype=torch.bool)), embed=embed_once())
+    hop = s["hop"] + (s["pad"] if em == 0 else 0)
+    if not finished:
+        if n - em < hop + look:
+            return None
+        end = em + hop + look
+    else:
+        end = n
+    start = max(0, em - left)
+    payload = OmniPayloadStruct(
+        codes=CodesStruct(audio=torch.tensor(frames[start:end], dtype=torch.long)),
+        meta=MetaStruct(finished=torch.tensor(finished, dtype=torch.bool), stream_finished=torch.tensor(finished, dtype=torch.bool),
+                        req_id=[rid], left_context_size=em - start),
+        embed=embed_once())
+    if not finished:
+        s["emitted"] = em + hop
+        s["hop"] = min(max(hop0, max_hop), max(hop0, s["hop"] * scale))
+    else:
+        s["done"] = True
     return payload
