@@ -4,9 +4,10 @@ One version number for the whole Sophon-Realtime v1 family: the code in this rep
 ModelScope (git tags with the same name) and the `sophon-realtime` package on PyPI. Each entry says which builds changed.
 Second digit: new features or new weights; third digit: fixes only.
 
-## 1.1.5 (2026-11-12): faster restarts, one version number everywhere
+## 1.1.5 (2026-11-12): faster restarts, READY means ready, one version number everywhere
 
 - Fix (Tag, Flash, E2E; `sophon-realtime serve`): every start could spend several extra minutes compiling kernels again. vLLM keeps its compiled kernels in `~/.cache/flashinfer`, one cache for all vLLM installs of a user, and installs with different paths overwrite each other's build there, so with more than one install on a machine (for example `tag/` and `flash/`, or two virtual environments) each start rebuilt them. The start scripts now keep the cache inside the install directory (`FLASHINFER_WORKSPACE_BASE`; `sophon-realtime serve` keeps it in the virtual environment). Measured with the E2E vLLM-Omni build on a machine with several installs: every start 12 min before, about 6 min for the first start and 4.5 min afterwards now. The 1.1.4 E2E scripts already had this.
+- Fix (Tag, Flash, E2E start scripts): `start.sh` printed READY while the server was still warming itself up in the background (a throwaway realtime session of about 20 s), so a request sent right after READY could take 8–12 s to its first audio. `start.sh` now waits for that warm-up to finish before it prints READY. `sophon-realtime serve` has no READY message: give it about 30 s after it starts answering.
 - All parts now carry the same version, 1.1.5: the Tag, Flash and E2E plugins, the own engine and `sophon-realtime` on PyPI (they were at 1.1.2, 1.1.3 or 1.1.4).
 - No weight changes: Tag and Flash weights stay at 1.1.0, E2E at 1.1.4.
 

@@ -25,5 +25,11 @@ for i in $(seq 1 240); do
   sleep 5
 done
 curl -sf -m2 localhost:$PORT/health >/dev/null || { echo "timeout — see logs/server_$PORT.log"; exit 1; }
-echo "warming up ..."; for k in 1 2; do $PY/python client_example.py --url http://127.0.0.1:$PORT --quiet --out /dev/null >/dev/null 2>&1; done
+echo "warming up ..."
+# After it starts answering, the server warms itself up in the background (a throwaway realtime session, about 20 s). Wait for that to
+# finish, so that the first real request is not slow.   SOPHON_WARMUP=0 turns the background warm-up off.
+if [ "${SOPHON_WARMUP:-1}" != 0 ]; then
+  for i in $(seq 1 90); do grep -aq "realtime warm-up \([0-9] got a reply\|1 got no reply\|1 failed\)" logs/server_$PORT.log && break; sleep 2; done
+fi
+for k in 1 2; do $PY/python client_example.py --url http://127.0.0.1:$PORT --quiet --out /dev/null >/dev/null 2>&1; done
 echo "READY  ws://127.0.0.1:$PORT/v1/realtime   http://127.0.0.1:$PORT/v1/chat/completions"
