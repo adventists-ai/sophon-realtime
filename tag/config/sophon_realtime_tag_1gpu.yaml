@@ -17,7 +17,8 @@ connectors:
       connector_get_max_wait: 300
       codec_chunk_frames: 10          # first flow chunk = 10 speech tokens (hop 10, voice prompts are trimmed to a multiple of 10)
       codec_left_context_frames: 50   # flow decodes each chunk with the last 50 tokens (~2 s) as context: constant cost per chunk
-      codec_stream_scale_factor: 1    # every chunk 10 tokens (~0.4 s); doubling them (0.4 -> 0.8 -> 1.6 s) left a gap after the first chunk
+      codec_stream_scale_factor: 2
+      codec_stream_hold_chunks: 2     # chunks 10, 10, 20, 40 tokens: a short second chunk (doubling right away left a gap after the first)
       codec_vocab_size: 6561
 
 stages:

@@ -203,6 +203,7 @@ def talker2code2wav_async_chunk(transfer_manager, multimodal_output, request, is
     hop0 = int(cfg.get("codec_chunk_frames", 25)); vocab = int(cfg.get("codec_vocab_size", 6561))
     look = int(cfg.get("codec_pre_lookahead_frames", 3)); max_hop = int(cfg.get("codec_max_chunk_frames", 4 * hop0))
     scale = int(cfg.get("codec_stream_scale_factor", 2)); left = int(cfg.get("codec_left_context_frames", 25))
+    hold = int(cfg.get("codec_stream_hold_chunks", 1))    # this many chunks of hop0 before the hop starts growing
     rs = transfer_manager.request_payload.get(rid)
     if not isinstance(rs, dict) or "_sophon_chunk" not in rs:
         mm = _voice_payload(request)["embed"]
@@ -254,7 +255,9 @@ def talker2code2wav_async_chunk(transfer_manager, multimodal_output, request, is
         embed=embed_once())
     if not finished:
         s["emitted"] = em + hop
-        s["hop"] = min(max(hop0, max_hop), max(hop0, s["hop"] * scale))
+        s["n"] = s.get("n", 0) + 1
+        if s["n"] >= hold:
+            s["hop"] = min(max(hop0, max_hop), max(hop0, s["hop"] * scale))
     else:
         s["done"] = True
     return payload
