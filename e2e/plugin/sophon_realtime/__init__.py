@@ -3,7 +3,7 @@
 
 E2E build (installed by e2e/install.sh as `sophon-realtime-e2e`): vllm serve <Sophon-Realtime-32B-E2E dir> --omni --deploy-config <yaml>
 """
-__version__ = "1.1.4"
+__version__ = "1.1.5"
 ARCH = "SophonRealtimeForConditionalGeneration"
 TALKER_ARCH = "SophonE2ETalker"
 DECODER_ARCH = "SophonE2EDecoder"

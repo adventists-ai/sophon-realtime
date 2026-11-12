@@ -61,6 +61,7 @@ https://github.com/user-attachments/assets/1d9442ef-84b0-45a3-acd4-2d05a9562397
 ## News
 
 - **2026-11-11 · v1.1: zero-shot voice cloning** in the Tag and Flash builds. A few seconds of audio and it talks to you in that voice, in real time. [Watch the demo](#zero-shot-voice-cloning-new-in-v11)
+- **2026-11-12 · 1.1.5:** restarts no longer recompile kernels when several installs share a machine; every part of the family now carries the same version. See the [changelog](CHANGELOG.md).
 - **2026-11-12 · 1.1.4: E2E can also be served by vLLM-Omni**, with the same commands, APIs and client as Tag and Flash. [`e2e/`](e2e/README.md)
 - **2026-11-11 · 1.1.3: E2E joins Tag and Flash as a full build, on one GPU.** New talker, first audio in about 0.25 s, 16 users per 80 GB GPU, NVV-SuperBench 0.75 (English) / 0.85 (Chinese). [Details](#e2e)
 - **2026-11-11 · 1.1.2:** `sophon-realtime serve` turns on CUDA MPS by default; long-reply and cold-start fixes. See the [changelog](CHANGELOG.md).

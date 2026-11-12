@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sophon-realtime-e2e"
-version = "1.1.4"
+version = "1.1.5"
 description = "Sophon-Realtime-32B-E2E as one vLLM-Omni model: full-duplex listen + write (with sound tags) -> E2E talker (continuous voice vectors) -> decoder"
 requires-python = ">=3.10"
 license = "Apache-2.0"

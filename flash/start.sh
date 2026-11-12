@@ -8,6 +8,9 @@ GPU=${GPU:-0}; PORT=${PORT:-8000}; PY=$HERE/.venv/bin
 [ -f logs/server_$PORT.pid ] && PORT=$PORT bash stop.sh >/dev/null 2>&1
 DEV=$GPU
 CONFIG=${CONFIG:-sophon_realtime_flash_1gpu.yaml}
+# vLLM compiles a few kernels at the first start (several minutes) and caches them. Keep the cache with this install: the default
+# cache in ~/.cache is shared by every vLLM install of the user, and installs with different paths rebuild it at each start.
+export FLASHINFER_WORKSPACE_BASE=${FLASHINFER_WORKSPACE_BASE:-$HERE}
 if [ "${MPS:-0}" = 1 ] && command -v nvidia-cuda-mps-control >/dev/null; then   # optional: the three stages share the GPU through MPS
   export CUDA_MPS_PIPE_DIRECTORY=$HERE/.mps/gpu$GPU/pipe CUDA_MPS_LOG_DIRECTORY=$HERE/.mps/gpu$GPU/log; mkdir -p $CUDA_MPS_PIPE_DIRECTORY $CUDA_MPS_LOG_DIRECTORY
   echo get_server_list | nvidia-cuda-mps-control >/dev/null 2>&1 || CUDA_VISIBLE_DEVICES=$GPU nvidia-cuda-mps-control -d

@@ -4,6 +4,12 @@ One version number for the whole Sophon-Realtime v1 family: the code in this rep
 ModelScope (git tags with the same name) and the `sophon-realtime` package on PyPI. Each entry says which builds changed.
 Second digit: new features or new weights; third digit: fixes only.
 
+## 1.1.5 (2026-11-12): faster restarts, one version number everywhere
+
+- Fix (Tag, Flash, E2E; `sophon-realtime serve`): every start could spend several extra minutes compiling kernels again. vLLM keeps its compiled kernels in `~/.cache/flashinfer`, one cache for all vLLM installs of a user, and installs with different paths overwrite each other's build there, so with more than one install on a machine (for example `tag/` and `flash/`, or two virtual environments) each start rebuilt them. The start scripts now keep the cache inside the install directory (`FLASHINFER_WORKSPACE_BASE`; `sophon-realtime serve` keeps it in the virtual environment). Measured with the E2E vLLM-Omni build on a machine with several installs: every start 12 min before, about 6 min for the first start and 4.5 min afterwards now. The 1.1.4 E2E scripts already had this.
+- All parts now carry the same version, 1.1.5: the Tag, Flash and E2E plugins, the own engine and `sophon-realtime` on PyPI (they were at 1.1.2, 1.1.3 or 1.1.4).
+- No weight changes: Tag and Flash weights stay at 1.1.0, E2E at 1.1.4.
+
 ## 1.1.4 (2026-11-12): E2E on vLLM-Omni
 
 - **E2E can now be served as one vLLM-Omni model** ([`e2e/`](e2e/README.md)), with the same `install.sh` / `start.sh`, the same `/v1/realtime` and `/v1/chat/completions` APIs and the same client as Tag and Flash. The talker and the decoder are the engine from 1.1.3, wrapped as two vLLM-Omni stages; the talker output is bit-identical to the own engine's. The own engine (`scripts/`, [docs/deploy.md](docs/deploy.md)) stays and is still a little faster.

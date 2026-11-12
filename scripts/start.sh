@@ -27,6 +27,9 @@ else
 fi
 
 echo "[1/3] thinker on GPU $GPU (port $THINKER_PORT)"
+# vLLM compiles a few kernels at the first start (several minutes) and caches them. Keep the cache with this install: the default
+# cache in ~/.cache is shared by every vLLM install of the user, and installs with different paths rebuild it at each start.
+export FLASHINFER_WORKSPACE_BASE=${FLASHINFER_WORKSPACE_BASE:-$HERE}
 CUDA_VISIBLE_DEVICES=$DEV PATH="$THINKER_ENV/bin:$PATH" nohup "$THINKER_ENV/bin/vllm" serve "$SOPHON_MODEL_DIR/base" \
   --served-model-name dj --enable-lora --lora-modules sophon="$REPLY_LORA" --max-lora-rank "$LORA_RANK" \
   --quantization fp8 --max-model-len 8192 --gpu-memory-utilization ${THINKER_MEM:-0.55} --port "$THINKER_PORT" \

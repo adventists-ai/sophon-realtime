@@ -3,7 +3,7 @@ bistream style while it is written) -> CosyVoice3 flow + HiFT, served as one vLL
 
 vllm serve <Sophon-Realtime-32B-Tag dir> --omni --deploy-config <sophon_realtime_tag_1gpu.yaml>
 """
-__version__ = "1.1.2"
+__version__ = "1.1.5"
 ARCH = "SophonRealtimeForConditionalGeneration"
 TALKER_ARCH = "SophonTagTalker"
 _done = False
