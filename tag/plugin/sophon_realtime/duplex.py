@@ -38,6 +38,9 @@ SPEECH_PROB = float(os.environ.get("SOPHON_SPEECH_PROB", "0.5"))
 SPEC_AT = float(os.environ.get("SOPHON_SPEC_AT", "0.05"))       # after this much silence, speculatively start writing a reply (held silent until DuplexJev judges the turn finished); <=0 disables
 RES_TIMEOUT = float(os.environ.get("SOPHON_RES_TIMEOUT", "15"))  # an append not confirmed by the framework within this time is rolled back (and a reply resent)
 SPEC_MIN_SPEECH = float(os.environ.get("SOPHON_SPEC_MIN_SPEECH", "0.3"))   # only draft speculatively once the user has spoken this long (s)
+# Floor for long replies: the thinker writes at most this many tokens per reply (~0.3 s of speech each, so about 40-50 s),
+# which the talker always says in full (its own limit is SOPHON_MAX_SPEECH_S, 50 s): speech, captions and history match.
+MAX_REPLY_TOKENS = int(os.environ.get("SOPHON_MAX_REPLY_TOKENS", "140"))
 MERGE_WINDOW = float(os.environ.get("SOPHON_MERGE_WINDOW", "2.0"))
 FALLBACK_S = float(os.environ.get("SOPHON_TURN_FALLBACK", "2.0"))
 IGNORE_SHORT = os.environ.get("SOPHON_IGNORE_SHORT", "0") == "1"     # on fallback, ignore short backchannels (default off: leave it to the model; fallback replies as usual)
@@ -725,6 +728,9 @@ class SophonRealtimeDuplexPlugin(DuplexModelPlugin):
             if runtime_config.get("temperature") is not None:
                 p0.temperature = float(runtime_config["temperature"])
             p0.max_tokens = runtime_config["max_tokens"] if isinstance(runtime_config.get("max_tokens"), int) else (240 if runtime_config.get("tools") else 120)
+            cap = MAX_REPLY_TOKENS + (240 if runtime_config.get("tools") else 0)
+            if MAX_REPLY_TOKENS > 0 and p0.max_tokens > cap:
+                p0.max_tokens = cap                              # text never runs past what the talker can say (see MAX_REPLY_TOKENS)
             p0.logprobs = 20                                     # turn questions need letter probabilities
             rp = float(os.environ.get("SOPHON_REP_PENALTY", "1.0"))
             if rp != 1.0: p0.repetition_penalty = rp

@@ -50,6 +50,9 @@ def _first(x, default=None):
 
 
 DEBUG = os.environ.get("SOPHON_TAG_DEBUG", "0") == "1"
+# Floor for long replies: one reply speaks at most this many seconds (25 speech tokens per second), then ends cleanly.
+# The talker's quality falls apart after about 55-60 s of continuous speech (long-context tests, 2026-11-11), so stay below it.
+MAX_SPEECH_TOK = int(float(os.environ.get("SOPHON_MAX_SPEECH_S", "50")) * 25)
 
 
 class _St:
@@ -364,7 +367,11 @@ class SophonTagTalker(CosyVoice3Model):
             if st is None:
                 continue
             st.steps += 1
-            if st.dummy:
+            if MAX_SPEECH_TOK > 0 and st.nspeech >= MAX_SPEECH_TOK and not st.done_eos:
+                forced[i] = self.EOS
+                if st.nspeech == MAX_SPEECH_TOK:
+                    logger.info("SophonTagTalker: reply reached SOPHON_MAX_SPEECH_S (%d speech tokens), ending it", MAX_SPEECH_TOK)
+            elif st.dummy:
                 forced[i] = self.FILL
             elif st.phase == "bi" and st.next_fill != -1 and len(st.out) == st.next_fill:
                 forced[i] = self.FILL; st.next_fill += self.MIX[1] + 1
@@ -423,6 +430,8 @@ class SophonTagTalker(CosyVoice3Model):
                 st.out.append(t); st.last_tok = t
                 if t == self.EOS:
                     st.done_eos = True
+            if t == self.EOS:
+                st.done_eos = True
             if t < self.S:
                 st.nspeech += 1
                 if DEBUG and st.nspeech in (1, 13, 33, 73):
