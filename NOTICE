@@ -7,11 +7,12 @@ See the NOTICE file of each build for details:
 - tag/NOTICE   (Sophon-Realtime-32B-Tag)
 - flash/NOTICE (Sophon-Realtime-32B-Flash)
 
-Sophon-Realtime-32B-E2E (docs/deploy.md) downloads model weights derived from the following works, each licensed under the
+Sophon-Realtime-32B-E2E (docs/deploy.md, e2e/) downloads model weights derived from the following works, each licensed under the
 Apache License 2.0:
 - base/ and adapters/: derived from Qwen3-VL-32B-Instruct by the Qwen team, Alibaba
   (https://huggingface.co/Qwen/Qwen3-VL-32B-Instruct), via DuplexJev-32B-Para (Adventists.ai). The audio encoder is derived from
   Qwen3-ASR (Qwen team, Alibaba).
+- thinker/ (used by the vLLM-Omni deployment in e2e/): the same model as base/ with the reply adapter merged in, quantized to FP8.
 - talker220/: the talker (model.safetensors) is by Adventists.ai. Its text embedding table (embed.safetensors) and tokenizer are
   taken from DuplexJev-4B-Para (Adventists.ai), which is derived from Qwen3-4B by the Qwen team, Alibaba
   (https://huggingface.co/Qwen/Qwen3-4B).

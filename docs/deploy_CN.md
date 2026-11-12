@@ -109,6 +109,7 @@ SOPHON_MODEL_DIR=$PWD/Sophon-Realtime-32B-E2E GPU=0 bash scripts/start.sh
 | `talker220/` | 说话头：权重、文字嵌入表、分词器 |
 | `e2/` | 解码器和 HiFT 声码器 |
 | `voices/` | 默认音色 |
+| `thinker/`、`config.json`、`talker220/config.json` | 只给 [vLLM-Omni 部署方式](../e2e/README_CN.md)用：已合并回复 LoRA 的思考器，FP8（约 36 GB）。`scripts/install.sh` 不会下载 `thinker/` |
 
 ## 这一版的限制
 

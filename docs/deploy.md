@@ -109,6 +109,7 @@ The talker performs these tags instead of reading them aloud. The thinker writes
 | `talker220/` | the talker: weights, text embedding table, tokenizer |
 | `e2/` | decoder and HiFT vocoder |
 | `voices/` | default voice |
+| `thinker/`, `config.json`, `talker220/config.json` | only for the [vLLM-Omni deployment](../e2e/README.md): the thinker with the reply LoRA merged in, FP8 (about 36 GB). `scripts/install.sh` does not download `thinker/` |
 
 ## Limits of this release
 

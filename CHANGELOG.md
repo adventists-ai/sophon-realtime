@@ -4,6 +4,15 @@ One version number for the whole Sophon-Realtime v1 family: the code in this rep
 ModelScope (git tags with the same name) and the `sophon-realtime` package on PyPI. Each entry says which builds changed.
 Second digit: new features or new weights; third digit: fixes only.
 
+## 1.1.4 (2026-11-12): E2E on vLLM-Omni
+
+- **E2E can now be served as one vLLM-Omni model** ([`e2e/`](e2e/README.md)), with the same `install.sh` / `start.sh`, the same `/v1/realtime` and `/v1/chat/completions` APIs and the same client as Tag and Flash. The talker and the decoder are the engine from 1.1.3, wrapped as two vLLM-Omni stages; the talker output is bit-identical to the own engine's. The own engine (`scripts/`, [docs/deploy.md](docs/deploy.md)) stays and is still a little faster.
+- Measured on one H100 from the release package (spoken question in, spoken answer out, users arriving within 10 s): first audio about 0.35 s for one user (own engine: 0.25 s); 16 users 0.58–0.65 s median / 0.71–0.87 s P90 with 0–2 replies more than 0.3 s behind playback (own engine: 0.44 / 0.56 s, none); 16 users × 5 turns 0.64 / 0.84–0.91 s. `/v1/realtime`: about 0.45 s from the end of speech to the first voice. Replies of 80–128 s of speech play to the end; one reply is spoken for at most about 2 to 2.5 minutes and then ends at a sentence end (the talker stays accurate up to about 150 s of continuous speech). Cancelled requests free their slot at once.
+- **Hardware note for E2E:** the numbers are for the H100 class. On an RTX PRO 6000 (Blackwell, 96 GB) the vLLM-Omni build installs and runs, but one GPU keeps up with about 4–8 concurrent users: the voice stages run about 2× slower there. The own engine uses the same voice stages; we have not measured it on that card. Tag and Flash reach 16 users on the same card.
+- In the vLLM-Omni build the vocoder graphs are captured with cuDNN choosing the convolution algorithms by timing (at start-up only). On RTX PRO 6000 this makes the vocoder about 4× faster; on H100 it changes little. `SOPHON_E2E_CUDNN_BENCHMARK=0` turns it off.
+- E2E weights on Hugging Face and ModelScope (tag `v1.1.4`): added `thinker/` (the thinker with the reply LoRA merged in, FP8, about 36 GB; the same files as in the Tag repository), `config.json` and `talker220/config.json` for the vLLM-Omni deployment. Nothing else changed. `scripts/install.sh` now skips `thinker/`, so the own-engine download keeps its size.
+- Tag, Flash and Live are unchanged; `sophon-realtime` on PyPI stays at 1.1.2.
+
 ## 1.1.3 (2026-11-11): E2E out of preview, on one GPU
 
 - **E2E is no longer a research preview and now runs on one 80 GB GPU** (it needed two). New talker (about 350M parameters) that reads the tagged reply and generates continuous voice vectors directly, a 2-step decoder, and a new speaking engine that batches every conversation in one loop. The thinker and the speaking engine share the GPU through CUDA MPS, which `scripts/start.sh` starts and `scripts/stop.sh` stops.

@@ -30,7 +30,7 @@ pipi .venv-engine -c scripts/constraints-engine.txt -r requirements-engine.txt m
 
 echo "[3/3] model"
 if [ "${SKIP_DOWNLOAD:-0}" != "1" ]; then
-  .venv-engine/bin/modelscope download --model AdventistsAI/Sophon-Realtime-32B-E2E --local_dir "$MODEL_DIR"
+  .venv-engine/bin/modelscope download --model AdventistsAI/Sophon-Realtime-32B-E2E --local_dir "$MODEL_DIR" --exclude 'thinker/*'   # thinker/ is only for the vLLM-Omni deployment (e2e/)
 fi
 echo
 echo "Done. Start with:"

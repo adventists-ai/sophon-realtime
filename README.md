@@ -61,6 +61,7 @@ https://github.com/user-attachments/assets/1d9442ef-84b0-45a3-acd4-2d05a9562397
 ## News
 
 - **2026-11-11 · v1.1: zero-shot voice cloning** in the Tag and Flash builds. A few seconds of audio and it talks to you in that voice, in real time. [Watch the demo](#zero-shot-voice-cloning-new-in-v11)
+- **2026-11-12 · 1.1.4: E2E can also be served by vLLM-Omni**, with the same commands, APIs and client as Tag and Flash. [`e2e/`](e2e/README.md)
 - **2026-11-11 · 1.1.3: E2E joins Tag and Flash as a full build, on one GPU.** New talker, first audio in about 0.25 s, 16 users per 80 GB GPU, NVV-SuperBench 0.75 (English) / 0.85 (Chinese). [Details](#e2e)
 - **2026-11-11 · 1.1.2:** `sophon-realtime serve` turns on CUDA MPS by default; long-reply and cold-start fixes. See the [changelog](CHANGELOG.md).
 - **2026-11-08 · v1.0:** first public release of the Tag, Flash and E2E (preview) builds.
@@ -78,11 +79,11 @@ All three builds share the same brain: one 32B model that listens to your voice,
 | Users per 80 GB GPU (recommended) | 16 | **40** | 16 |
 | Zero-shot voice cloning | **yes**, from a 3–10 s clip ([how](tag/README.md#zero-shot-voice-cloning)) | **yes**, from a 3–10 s clip ([how](flash/README.md#zero-shot-voice-cloning)) | no |
 | GPUs | **1** × 80 GB | **1** × 80 GB | **1** × 80 GB |
-| Serving | vLLM-Omni, one command | vLLM-Omni, one command | own engine, one command |
+| Serving | vLLM-Omni, one command | vLLM-Omni, one command | own engine or vLLM-Omni, one command |
 | Weights | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) |
-| Code | [`tag/`](tag/README.md) | [`flash/`](flash/README.md) | [`docs/deploy.md`](docs/deploy.md) |
+| Code | [`tag/`](tag/README.md) | [`flash/`](flash/README.md) | own engine: [`docs/deploy.md`](docs/deploy.md) · vLLM-Omni: [`e2e/`](e2e/README.md) |
 
-**Which one?** Start with **Tag** if you want the voice to act. Pick **Flash** if the number of users per GPU matters most. Pick **E2E** for the fastest first audio with a voice that still laughs and sighs. Tag and Flash share the same APIs, so you can switch later; E2E runs on its own engine.
+**Which one?** Start with **Tag** if you want the voice to act. Pick **Flash** if the number of users per GPU matters most. Pick **E2E** for the fastest first audio with a voice that still laughs and sighs. Tag and Flash share the same APIs, so you can switch later; E2E runs on its own engine or, since 1.1.4, on vLLM-Omni with the same APIs as Tag and Flash.
 
 ## Languages
 
@@ -178,6 +179,8 @@ https://github.com/user-attachments/assets/74bd6096-b6fc-4433-a1d7-d3e967107193
 The E2E build has no speech-token model in the middle. A compact talker (about 350M parameters) reads the brain's tagged reply while it is still being written and generates a stream of continuous voice vectors, about 6.5 frames per second; a 2-step decoder and a vocoder turn them into 24 kHz audio. Laughs, coughs, sighs, breaths and stressed words are produced by the talker itself, as part of the same stream. Everything runs on **one 80 GB GPU** with our own engine: [docs/deploy.md](docs/deploy.md). Weights: [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E).
 
 Measured from a fresh install on one H100: first audio for one user in about 0.25 s; 16 users arriving within 10 s get first audio in 0.44 s (median) / 0.56 s (P90) with no reply falling behind playback. NVV-SuperBench: 0.75 (English) / 0.85 (Chinese). Full table in [docs/deploy.md](docs/deploy.md#performance-one-h100-80-gb-measured-from-a-fresh-install). This build speaks Chinese and English with one built-in voice; for voice cloning or more languages use Tag or Flash.
+
+E2E can be served in two ways, with the same weights and the same voice: by our own engine ([docs/deploy.md](docs/deploy.md), the numbers above), or as one vLLM-Omni model like Tag and Flash ([e2e/](e2e/README.md): `/v1/realtime` and `/v1/chat/completions`; first audio about 0.35 s for one user and 0.58–0.65 s (median) for 16). Both are measured on an H100. The E2E voice stages run about 2× slower on an RTX PRO 6000 (about 4–8 users per GPU); on such cards use Tag or Flash if you need more users per GPU.
 
 ## Fine-tuning
 

@@ -61,6 +61,7 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 ## 最新进展
 
 - **2026-11-11 · v1.1：零样本声音克隆**，Tag 版和 Flash 版均已支持。几秒钟的录音，就能用这个声音和你实时对话。[看演示视频](#零样本声音克隆v11-新增)
+- **2026-11-12 · 1.1.4：E2E 版也可以用 vLLM-Omni 部署**，命令、接口和客户端与 Tag、Flash 相同。[`e2e/`](e2e/README_CN.md)
 - **2026-11-11 · 1.1.3：E2E 版与 Tag、Flash 并列为正式版本，单卡即可运行。** 新的说话头，单路首包约 0.25 秒，一张 80 GB 显卡 16 路并发，NVV-SuperBench 英文 0.75 / 中文 0.85。[详情](#e2e)
 - **2026-11-11 · 1.1.2：** `sophon-realtime serve` 默认开启 CUDA MPS；修复长回复和冷启动问题，详见[更新记录](CHANGELOG.md)。
 - **2026-11-08 · v1.0：** Tag、Flash、E2E（预览）三个版本首次开源发布。
@@ -78,11 +79,11 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 | 每张 80 GB 卡建议并发 | 16 路 | **40 路** | 16 路 |
 | 零样本音色克隆 | **支持**，3–10 秒参考音（[用法](tag/README_CN.md#零样本音色克隆)） | **支持**，3–10 秒参考音（[用法](flash/README_CN.md#零样本音色克隆)） | 不支持 |
 | 显卡 | **1** × 80 GB | **1** × 80 GB | **1** × 80 GB |
-| 部署 | vLLM-Omni，一条命令 | vLLM-Omni，一条命令 | 自研引擎，一条命令 |
+| 部署 | vLLM-Omni，一条命令 | vLLM-Omni，一条命令 | 自研引擎或 vLLM-Omni，一条命令 |
 | 权重 | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) |
-| 代码 | [`tag/`](tag/README_CN.md) | [`flash/`](flash/README_CN.md) | [`docs/deploy_CN.md`](docs/deploy_CN.md) |
+| 代码 | [`tag/`](tag/README_CN.md) | [`flash/`](flash/README_CN.md) | 自研引擎：[`docs/deploy_CN.md`](docs/deploy_CN.md) · vLLM-Omni：[`e2e/`](e2e/README_CN.md) |
 
-**怎么选？** 想让声音"会演"，先用 **Tag**；最看重单卡能接多少人，用 **Flash**；想要最快的首包、同时保留会笑会叹气的表现力，用 **E2E**。Tag 和 Flash 接口相同，之后可以随时切换；E2E 用自研引擎。
+**怎么选？** 想让声音"会演"，先用 **Tag**；最看重单卡能接多少人，用 **Flash**；想要最快的首包、同时保留会笑会叹气的表现力，用 **E2E**。Tag 和 Flash 接口相同，之后可以随时切换；E2E 用自研引擎，1.1.4 起也可以用 vLLM-Omni 部署（接口与 Tag、Flash 相同）。
 
 ## 多语言
 
@@ -178,6 +179,8 @@ https://github.com/user-attachments/assets/7f0627b0-fae4-4633-b412-88cb24942ab8
 E2E 版中间不经过语音 token。一个小巧的说话头（约 3.5 亿参数）在大脑还在写回复的时候就开始读，边读边生成连续的声音向量（每秒约 6.5 帧），再由 2 步解码器和声码器还原成 24 kHz 音频。笑、咳嗽、叹气、呼吸和重读都由说话头自己在同一条流里发出来。整套系统跑在**一张 80 GB 显卡**上，使用我们的自研引擎：[docs/deploy_CN.md](docs/deploy_CN.md)。权重：[魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E)。
 
 单张 H100 上全新安装后的实测：单路首包约 0.25 秒；16 路用户在 10 秒内陆续到达时，首包中位数 0.44 秒、P90 0.56 秒，没有回复出现播放落后。NVV-SuperBench：英文 0.75 / 中文 0.85。完整表格见 [docs/deploy_CN.md](docs/deploy_CN.md)。这一版用一个内置音色说中文和英文；需要音色克隆或更多语言，请用 Tag 或 Flash。
+
+E2E 版有两种部署方式，权重相同、声音相同：自研引擎（[docs/deploy_CN.md](docs/deploy_CN.md)，上面的数字），或者像 Tag、Flash 一样作为一个 vLLM-Omni 模型（[e2e/](e2e/README_CN.md)：提供 `/v1/realtime` 和 `/v1/chat/completions`；单路首包约 0.35 秒，16 路首包中位数 0.58–0.65 秒）。以上都是在 H100 上测的。E2E 的发声部分在 RTX PRO 6000 上慢约一倍（单卡约 4–8 路）；在这类显卡上需要更高并发时请用 Tag 或 Flash。
 
 ## 微调
 
