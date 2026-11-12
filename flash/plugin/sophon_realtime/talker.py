@@ -14,6 +14,8 @@ import torch
 from vllm.logger import init_logger
 from vllm_omni.model_executor.models.qwen3_tts.qwen3_tts_talker import Qwen3TTSTalkerForConditionalGeneration
 
+from . import segreg
+
 logger = init_logger("vllm_omni.sophon_realtime.talker")
 LANG = {"zh": "chinese", "en": "english", "ja": "japanese", "ko": "korean", "de": "german", "fr": "french", "es": "spanish",
         "it": "italian", "pt": "portuguese", "ru": "russian"}
@@ -47,6 +49,11 @@ class SophonTTSTalker(Qwen3TTSTalkerForConditionalGeneration):
         self._missing: set[str] = set()
         self._bad: set[tuple[str, float]] = set()
         self._force_eos: set[str] = set()
+        # Long replies in segments (segreg): per request {"start": first text id of the segment, "end": cut or None}
+        self._seg: dict[str, dict] = {}
+        self._pieces: dict[int, str] = {}
+        if segreg.SEEK_S > 0:
+            segreg.install(logger)
         logger.info("SophonTTSTalker voices dir: %s (%s)", self._voice_dir,
                     sorted(os.listdir(self._voice_dir)) if os.path.isdir(self._voice_dir) else "missing")
 
@@ -101,6 +108,24 @@ class SophonTTSTalker(Qwen3TTSTalkerForConditionalGeneration):
             logger.info("sophon_realtime: cloned voice from %s (%.1f s)", path, len(wav) / sr)
         return v.detach().reshape(1, -1).to(self._embedding_dtype).cpu()
 
+    def _piece(self, tid: int) -> str:
+        p = self._pieces.get(tid)
+        if p is None:
+            from .proc import _tokenizer
+            p = self._pieces[tid] = _tokenizer(None).decode([tid])
+        return p
+
+    def _segment(self, rid, ids: list[int], fed: int, fin: bool) -> tuple[int, int | None]:
+        """(start, end) of the current segment; plans the cut once there is enough text (segreg.find_cut)."""
+        if rid is None:
+            return 0, None
+        seg = self._seg.setdefault(rid, {"start": 0, "end": None, "ids": ids, "fin": fin})
+        if len(ids) >= len(seg["ids"]):
+            seg["ids"] = ids; seg["fin"] = fin
+        if segreg.SEEK_S > 0 and seg["end"] is None:
+            seg["end"] = segreg.find_cut(ids, seg["start"], fed, self._piece, fin)
+        return seg["start"], seg["end"]
+
     @staticmethod
     def _ids(info) -> list[int]:
         ids = (info.get("ids") or {}).get("output") if isinstance(info.get("ids"), dict) else None
@@ -125,25 +150,43 @@ class SophonTTSTalker(Qwen3TTSTalkerForConditionalGeneration):
         dev = input_ids.device; span = int(input_ids.shape[0])
         cfg = self.config; tc = self.talker_config
         ids = self._ids(info); fin = self._fin(info)
+        rid = info.get("request_id")
+        seg = self._seg.get(rid)
+        if seg is not None and len(seg.get("ids", ())) > len(ids):   # restarted after the thinker finished: the request no longer carries the text
+            ids, fin = seg["ids"], seg["fin"]
+        if seg is not None and seg.get("end") is not None and rid in segreg.RESTARTED:   # the next segment of a long reply
+            segreg.RESTARTED.discard(rid)
+            self._seg[rid] = {"start": seg["end"], "end": None, "ids": ids, "fin": fin}
+        elif rid is not None:
+            self._seg[rid] = {"start": 0, "end": None, "ids": ids, "fin": fin}
+            if len(self._seg) > 512:
+                for k in list(self._seg)[:len(self._seg) - 512]:
+                    self._seg.pop(k, None)
+        start, end = self._segment(rid, ids, 0, fin)
+        lim = len(ids) if end is None else end
+        seg_ids = ids[start:lim]
         lang = str(_first(info.get("language"), "zh") or "zh").lower()[:2]
         voice = str(_first(info.get("speaker"), "chelsie") or "chelsie")
         lang_id = tc.codec_language_id.get(LANG.get(lang, "english"), tc.codec_language_id["english"])
         bos, eos, pad = self._te([cfg.tts_bos_token_id, cfg.tts_eos_token_id, cfg.tts_pad_token_id], dev).split(1, 0)
         codec = torch.cat([self._ce([tc.codec_think_id, tc.codec_think_bos_id, lang_id, tc.codec_think_eos_id], dev),
                            self._voice(voice, lang, dev), self._ce([tc.codec_pad_id, tc.codec_bos_id], dev)], 0)     # (7, H)
-        first = self._te(ids[:1], dev) if ids else pad
+        first = self._te(seg_ids[:1], dev) if seg_ids else pad
         pre = torch.cat([self._te(ROLE, dev), torch.cat([pad.expand(codec.shape[0] - 2, -1), bos], 0) + codec[:-1], first + codec[-1:]], 0)
-        tail = [self._te(ids[1:], dev)] if len(ids) > 1 else []
-        if fin:
+        tail = [self._te(seg_ids[1:], dev)] if len(seg_ids) > 1 else []
+        seg_eos = end is not None
+        if fin or seg_eos:
             tail.append(eos)
+            if seg_eos:
+                segreg.AT_EOS.add(rid)                    # its end token restarts the request for the next segment
         trailing = torch.cat(tail, 0) if tail else pre.new_zeros((0, pre.shape[1]))
         if pre.shape[0] != span:
             logger.warning_once("sophon talker prefill span %d != prompt %d; set hf_overrides.async_chunk_prewarm_prompt_len=%d",
                                 span, pre.shape[0], PROMPT_LEN)
             pre = torch.cat([pre, pad.expand(max(0, span - pre.shape[0]), -1)], 0)[:span]
         ids_out = input_ids.clone(); ids_out[:] = int(tc.codec_pad_id)
-        rid = info.get("request_id")
         if rid is not None:
+            self._force_eos.discard(rid)                  # a new segment starts with a clean runaway guard
             if fin and not ids:
                 self._force_eos.add(rid)                  # no text (full-duplex turn-check request): finish immediately
             else:
@@ -152,7 +195,7 @@ class SophonTTSTalker(Qwen3TTSTalkerForConditionalGeneration):
             "hidden_states": {"trailing_text": trailing.detach()},
             "meta": {"talker_text_offset": 0, "codec_streaming": True, "talker_prefill_offset": span,
                      "codec_frame_valid": torch.zeros((), dtype=torch.bool, device=dev),
-                     "sophon_n": len(ids), "sophon_eos": fin},
+                     "sophon_n": lim, "sophon_eos": fin or seg_eos, "sophon_steps": 0, "sophon_post": 0},
             "codes": {"audio": torch.zeros((span, int(tc.num_code_groups)), dtype=torch.long, device=dev)},
         }
         return ids_out, pre, upd
@@ -167,15 +210,26 @@ class SophonTTSTalker(Qwen3TTSTalkerForConditionalGeneration):
         steps = int(meta.get("sophon_steps", 0) or 0) + 1; post = int(meta.get("sophon_post", 0) or 0) + (1 if eos_done else 0)
         meta["sophon_steps"] = steps; meta["sophon_post"] = post
         rid = info.get("request_id")
-        if rid is not None and eos_done and steps > FRAMES_PER_TOK * max(1, len(ids)) + 60:
+        seg = self._seg.get(rid)
+        if seg is not None and len(seg.get("ids", ())) > len(ids):
+            ids, fin = seg["ids"], seg["fin"]
+        start, end = self._segment(rid, ids, n, fin)
+        lim = len(ids) if end is None else end
+        if rid is not None and eos_done and steps > FRAMES_PER_TOK * max(1, lim - start) + 60:
             if rid not in self._force_eos:
-                logger.warning("sophon talker: force codec EOS for %s (steps=%d post_eos=%d text_tokens=%d)", rid, steps, post, len(ids))
+                logger.warning("sophon talker: force codec EOS for %s (steps=%d post_eos=%d text_tokens=%d)", rid, steps, post, lim - start)
             self._force_eos.add(rid)
-        add = []
-        if len(ids) > n:
-            add.append(self._te(ids[n:], device)); n = len(ids)
-        if fin and not eos_done:
+        add = []; fed = n
+        if lim > n:
+            add.append(self._te(ids[n:lim], device)); n = lim
+        if (fin or end is not None) and n >= lim and not eos_done:
             add.append(self._te([self.config.tts_eos_token_id], device)); eos_done = True
+            if end is not None:
+                segreg.AT_EOS.add(rid)                    # end of a segment: its end token restarts the request
+        hs0 = info.get("hidden_states"); tail0 = hs0.get("trailing_text") if isinstance(hs0, dict) else None
+        in_hand = (tail0.shape[0] - int(meta.get("talker_text_offset", 0) or 0)) if isinstance(tail0, torch.Tensor) and tail0.ndim == 2 else 0
+        if rid is not None:     # segreg: keep stepping without new thinker chunks while there is text in hand / all of it is here
+            segreg.AHEAD[rid] = 1 << 20 if eos_done else in_hand + (n - fed)
         if not add:
             return {"sophon_steps": steps, "sophon_post": post}
         hs = info.get("hidden_states")

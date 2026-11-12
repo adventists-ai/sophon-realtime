@@ -57,8 +57,6 @@ MAX_SPEECH_TOK = int(float(os.environ.get("SOPHON_MAX_SPEECH_S", "0")) * 25)
 SEEK_TOK = int(segreg.SEEK_S * 25)
 # Safety net: a segment never speaks longer than this (the talker degrades after ~55 s of context).
 SEG_MAX_TOK = int(float(os.environ.get("SOPHON_SEG_MAX_S", "50")) * 25)
-_END = "。！？!?；;…\n"     # sentence ends
-_SOFT = "，,、：:"         # clause ends
 
 
 class _St:
@@ -280,7 +278,7 @@ class SophonTagTalker(CosyVoice3Model):
         if is_prefill:
             st = self._st.get(rid)
             if st is not None and st.restart:          # next segment of a long reply: same request, fresh LM context
-                st.new_segment()
+                st.new_segment(); segreg.RESTARTED.discard(rid)
             else:
                 lang = str(_first(info.get("language"), "zh") or "zh").lower()[:2]
                 voice = self._voice(str(_first(info.get("speaker"), "") or ""), lang)
@@ -383,26 +381,11 @@ class SophonTagTalker(CosyVoice3Model):
             p = self._pieces[tid] = self._tok.decode([tid])
         return p
 
-    def _sentence_end(self, txt: list[int], j: int) -> bool:
-        p = self._piece(txt[j]).rstrip(" ")
-        if p and p[-1] in _END:
-            return True
-        return p.endswith(".") and j + 1 < len(txt) and self._piece(txt[j + 1])[:1].isspace()     # "3.5" is no end
-
     def _plan_segment_end(self, st: _St):
-        """Where the current segment ends, by the spoken length of the text fed so far in it (the talker is fed text
-        well ahead of its speech, so counting speech would cut too late): from SEEK_S at the next sentence end, from
-        FORCE_S at the next clause end within a few tokens, or right here. No cut at the very end of a finished reply."""
-        from .proc import speech_seconds
-        txt = st.text
-        fed = speech_seconds(self._tok.decode(txt[st.seg_start:st.pos]))
-        if fed < segreg.SEEK_S:
-            return
-        end = next((j + 1 for j in range(st.pos, len(txt)) if self._sentence_end(txt, j)), None)
-        if end is None and fed >= segreg.FORCE_S:
-            near = range(st.pos, min(len(txt), st.pos + 12))
-            end = next((j + 1 for j in near if self._piece(txt[j]).rstrip(" ")[-1:] in tuple(_SOFT + ".")), st.pos)
-        if end is not None and not (st.fin and end >= len(txt)):
+        """Where the current segment ends (segreg.find_cut: the talker is fed text well ahead of its speech, so the cut is
+        planned on the text, never before the text already fed)."""
+        end = segreg.find_cut(st.text, st.seg_start, st.pos, self._piece, st.fin)
+        if end is not None:
             st.seg_end = max(end, st.pos)
 
     def sample(self, logits, sampling_metadata):

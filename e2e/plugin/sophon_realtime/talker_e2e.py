@@ -11,6 +11,7 @@ from vllm.logger import init_logger
 from vllm_omni.model_executor.models.output_templates import OmniOutput
 
 from .bridge220 import _f32
+from . import segreg
 
 logger = init_logger("vllm_omni.sophon_realtime.talker")
 FRAME, WAIT, STOP = 1000, 1001, 151645
@@ -32,11 +33,15 @@ STEP_GAP = float(os.environ.get("SOPHON_E2E_STEP_GAP", "0"))   # otherwise the e
 
 
 class _St:
-    __slots__ = ("sess", "slot", "frames", "R", "chunks", "flushed", "nchunk", "tok", "t0", "text", "t_f1", "t_c1", "t_e0", "sec")
+    __slots__ = ("sess", "slot", "frames", "R", "chunks", "flushed", "nchunk", "tok", "t0", "text", "t_f1", "t_c1", "t_e0", "sec",
+                 "fin", "fed", "seg_start", "seg_end", "seg_f0")
 
     def __init__(self, sess, R):
         self.sess = sess; self.slot = None; self.frames = []; self.R = R; self.chunks = []; self.flushed = False; self.nchunk = 0
         self.tok = WAIT; self.t0 = time.perf_counter(); self.text = ""; self.t_f1 = None; self.t_c1 = None; self.t_e0 = None; self.sec = 0.0
+        # long replies in segments (segreg.find_cut): each segment is a fresh engine session on the rest of the text; the frames,
+        # the adapter / render state and the decoder stream continue, so the audio stays one stream
+        self.fin = False; self.fed = 0; self.seg_start = 0; self.seg_end = None; self.seg_f0 = 0
 
 
 class SophonE2ETalker(nn.Module):
@@ -83,9 +88,29 @@ class SophonE2ETalker(nn.Module):
         else:
             return
         if len(text) > len(st.text):
-            st.sess.add_text(text[len(st.text):]); st.text = text
-        if fin and not st.sess.final:
+            st.text = text
+        st.fin = st.fin or fin
+        self._feed(st)
+
+    def _feed(self, st: _St):
+        """Give the engine session the text of the current segment that has arrived; end the session at the cut / reply end."""
+        if segreg.SEEK_S > 0 and st.seg_end is None:
+            st.seg_end = segreg.find_cut(st.text, st.seg_start, st.fed, lambda c: c, st.fin)
+        lim = len(st.text) if st.seg_end is None else st.seg_end
+        if lim > st.fed:
+            st.sess.add_text(st.text[st.fed:lim]); st.fed = lim
+        if not st.sess.final and ((st.seg_end is not None and st.fed >= st.seg_end) or (st.seg_end is None and st.fin)):
             st.sess.finish()
+
+    def _next_segment(self, st: _St) -> bool:
+        """The engine session ended: start the next segment of a long reply (True), or the reply is over (False)."""
+        if st.seg_end is None or (st.fin and st.seg_end >= len(st.text)):
+            return False
+        st.sess = self.T.Session(self.core, st.sess.lang, "", None)
+        st.seg_start = st.fed = st.seg_end; st.seg_end = None; st.seg_f0 = len(st.frames)
+        self._feed(st)
+        logger.info("talker: new segment at char %d of %d (%d frames so far)", st.seg_start, len(st.text), len(st.frames))
+        return True
 
     def preprocess(self, input_ids: torch.Tensor, input_embeds: torch.Tensor | None, **info: Any):
         add = info.get("additional_information")
@@ -156,10 +181,12 @@ class SophonE2ETalker(nn.Module):
                     if al[j]:
                         st.frames.append(f[j]); grew.append(st)
                         if st.t_f1 is None: st.t_f1 = time.perf_counter() - st.t0
-                        if len(st.frames) >= self.cap:
+                        if len(st.frames) - st.seg_f0 >= self.cap:
                             st.sess.talk_done = True; E.done[j] = True; C.slots[j] = None; st.slot = None
                     else:
                         st.sess.talk_done = True; C.slots[j] = None; st.slot = None
+                    if st.sess.talk_done:
+                        self._next_segment(st)
         adp = []
         for r, st in sts:
             K = len(st.frames)

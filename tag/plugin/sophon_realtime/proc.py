@@ -88,29 +88,6 @@ def strip_tags(s: str) -> str:
     return TAG_RE.sub("", s)
 
 
-def last_boundary(raw: str, limit: int | None = None) -> int:
-    """Index just after the last sentence end in raw thinker text (outside [..] / <..> tags), at most `limit`; 0 if none."""
-    best = 0; depth = None; n = len(raw) if limit is None else min(limit, len(raw))
-    for i in range(n):
-        c = raw[i]
-        if depth:
-            if c == depth: depth = None
-            continue
-        if c in "[<": depth = "]" if c == "[" else ">"; continue
-        if c in "。！？!?；;\n" or (c == "." and i + 1 < len(raw) and raw[i + 1].isspace()):
-            j = i + 1
-            while j < len(raw) and raw[j] in "\"'”’)）」』": j += 1
-            if j <= n: best = j
-    return best
-
-
-def speech_seconds(text: str) -> float:
-    """Rough spoken length of cleaned text: CJK characters ~0.22 s, other words ~0.4 s."""
-    t = strip_tags(text); cjk = sum(1 for c in t if "\u3040" <= c <= "\u9fff" or "\uac00" <= c <= "\ud7af")
-    words = len(re.sub(r"[\u3040-\u9fff\uac00-\ud7af]", " ", t).split())
-    return cjk * 0.22 + words * 0.4
-
-
 def _tokenizer(tm):
     global _TOK
     if _TOK is None:

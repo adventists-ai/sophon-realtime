@@ -95,10 +95,10 @@ def tag_clean(s: str, final: bool) -> str:
         if c in "*#`":
             buf = buf[1:]; continue
         j = buf.find(CLOSE[c], 1)
-        if j < 0:
-            if len(buf) > 40:
+        if j < 0 or j > 40:             # a bracket that does not close within 40 characters is not a tag / aside: speak its text
+            if j > 40 or len(buf) > 40:  # (decided the same way before and after it closes, so the text never shrinks)
                 buf = buf[1:]; continue
-            break
+            break                       # may still close: hold it back
         tok, buf = buf[:j + 1], buf[j + 1:]
         if c in "[<":
             emit_tag(tok)

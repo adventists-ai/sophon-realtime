@@ -8,9 +8,9 @@ Every thinker step sends the talker the *cumulative* reply text written so far (
 - a chunk is sent on *every* thinker step once LEAD tokens are ready (heartbeat): in async-chunk mode the talker only steps
   when a chunk arrives, and it needs ~4 steps per text token (bistream 5 text : 15 speech + the text positions)."""
 import os
-import time
 import re
 import threading
+import time
 
 import torch
 from vllm.logger import init_logger
@@ -21,14 +21,10 @@ from vllm_omni.model_executor.stage_input_processors.tts_utils import extract_la
 logger = init_logger("vllm_omni.sophon_realtime.proc")
 
 LEAD = int(os.environ.get("SOPHON_LEAD", "5"))
-SEG_HOLD = int(os.environ.get("SOPHON_SEG_HOLD", "40"))          # segmented replies: within this many tokens of the segment limit, hold back text after the last sentence end
-MAX_SPEECH_S = float(os.environ.get("SOPHON_MAX_SPEECH_S", "135"))  # unsegmented requests: stop speaking at the last sentence end before this much speech (the E2E talker stays accurate up to about 150 s)
-SEG_DIR = os.environ.get("SOPHON_SEG_DIR", "/dev/shm/sophon_seg")
 POINT = {"[laughter]", "[breath]", "[sigh]", "[cough]", "[quick_breath]"}
 SPAN = {"laughter", "strong"}
 CLOSE = {"[": "]", "<": ">", "(": ")", "（": "）", "【": "】"}
 _TOK = None
-_TTOK = None
 _LOCK = threading.Lock()
 _ST: dict[str, dict] = {}
 
@@ -69,10 +65,10 @@ def tag_clean(s: str, final: bool) -> str:
         if c in "*#`":
             buf = buf[1:]; continue
         j = buf.find(CLOSE[c], 1)
-        if j < 0:
-            if len(buf) > 40:
+        if j < 0 or j > 40:             # a bracket that does not close within 40 characters is not a tag / aside: speak its text
+            if j > 40 or len(buf) > 40:  # (decided the same way before and after it closes, so the text never shrinks)
                 buf = buf[1:]; continue
-            break
+            break                       # may still close: hold it back
         tok, buf = buf[:j + 1], buf[j + 1:]
         if c in "[<":
             emit_tag(tok)
@@ -89,68 +85,6 @@ TAG_RE = re.compile(r"\[(?:laughter|breath|sigh|cough|quick_breath)\]|</?(?:laug
 
 def strip_tags(s: str) -> str:
     return TAG_RE.sub("", s)
-
-
-def last_boundary(raw: str, limit: int | None = None) -> int:
-    """Index just after the last sentence end in raw thinker text (outside [..] / <..> tags), at most `limit`; 0 if none."""
-    best = 0; depth = None; n = len(raw) if limit is None else min(limit, len(raw))
-    for i in range(n):
-        c = raw[i]
-        if depth:
-            if c == depth: depth = None
-            continue
-        if c in "[<": depth = "]" if c == "[" else ">"; continue
-        if c in "。！？!?；;\n" or (c == "." and i + 1 < len(raw) and raw[i + 1].isspace()):
-            j = i + 1
-            while j < len(raw) and raw[j] in "\"'”’)）」』": j += 1
-            if j <= n: best = j
-    return best
-
-
-def speech_seconds(text: str) -> float:
-    """Rough spoken length of cleaned text: CJK characters ~0.22 s, other words ~0.4 s."""
-    t = strip_tags(text); cjk = sum(1 for c in t if "\u3040" <= c <= "\u9fff" or "\uac00" <= c <= "\ud7af")
-    words = len(re.sub(r"[\u3040-\u9fff\uac00-\ud7af]", " ", t).split())
-    return cjk * 0.22 + words * 0.4
-
-
-def _seg_path(rid: str) -> str:
-    import hashlib
-    return os.path.join(SEG_DIR, hashlib.sha1(rid.encode()).hexdigest() + ".json")
-
-
-def seg_handoff(rid: str, said_raw):
-    """Segment end: tell the plugin which raw text was actually spoken (None: the reply ended by itself)."""
-    import json
-    try:
-        os.makedirs(SEG_DIR, exist_ok=True); tmp = _seg_path(rid) + ".tmp"
-        with open(tmp, "w") as f: json.dump({"rid": rid, "said": said_raw}, f, ensure_ascii=False)
-        os.replace(tmp, _seg_path(rid))
-    except Exception:  # noqa: BLE001
-        pass
-
-
-def seg_read(rid: str, wait: float = 1.0):
-    """Plugin side: the handoff for a request id (exact or prefix match); returns (found, said_raw)."""
-    import json, time
-    end = time.monotonic() + wait
-    while True:
-        try:
-            for n in ([_seg_path(rid)] + [os.path.join(SEG_DIR, x) for x in os.listdir(SEG_DIR) if x.endswith(".json")]):
-                try:
-                    with open(n) as f: d = json.load(f)
-                except Exception:  # noqa: BLE001
-                    continue
-                r = d.get("rid") or ""
-                if r == rid or r.startswith(rid) or rid.startswith(r):
-                    try: os.remove(n)
-                    except Exception: pass  # noqa: E701
-                    return True, d.get("said")
-        except FileNotFoundError:
-            pass
-        if time.monotonic() >= end:
-            return False, None
-        time.sleep(0.05)
 
 
 def _tokenizer(tm):
@@ -190,31 +124,7 @@ def thinker2talker_async_chunk(transfer_manager, multimodal_output, request, is_
     out = [int(t) for t in (request.output_token_ids or [])]
     raw = cut_tool(tok.decode(out, skip_special_tokens=True), is_finished)
     st = _ST.setdefault(rid, {"sent": 0, "raw_len": 0})
-    if st.get("closed"):
-        if is_finished: _ST.pop(rid, None)
-        return None
-    cont = _entry(request, "sophon_cont") == "1"
-    final = is_finished; close = False
-    if cont:                                   # segmented reply: never let the talker speak past the last sentence end of a segment
-        maxt = int(getattr(getattr(request, "sampling_params", None), "max_tokens", 0) or 0)
-        if maxt and len(out) >= maxt - SEG_HOLD:
-            keep = max(last_boundary(raw), st["raw_len"])
-            hit = is_finished and len(out) >= maxt
-            if keep > 0 and (not is_finished or hit):
-                raw = raw[:keep]; final = final or hit
-            if hit: seg_handoff(rid, raw)
-        if is_finished and not (maxt and len(out) >= maxt): seg_handoff(rid, None)
-    else:                                      # unsegmented (e.g. HTTP with a large max_tokens): end the speech at a sentence end before MAX_SPEECH_S
-        sp = speech_seconds(tag_clean(raw, is_finished)) if MAX_SPEECH_S > 0 else 0.0
-        if sp > MAX_SPEECH_S - 8:              # within 8 s of the cap: hold text back at sentence ends
-            b = last_boundary(raw)
-            while b > st["raw_len"] and speech_seconds(tag_clean(raw[:b], True)) > MAX_SPEECH_S:
-                b = last_boundary(raw, b - 1)
-            keep = max(b, st["raw_len"])
-            if sp > MAX_SPEECH_S:
-                raw = raw[:keep]; final = True; close = True
-            elif not is_finished:
-                raw = raw[:keep]
+    final = is_finished
     text = tag_clean(raw, final).lstrip()
     ids = [ord(c) for c in text]              # the E2E talker tokenizes and reads the tags itself: send the text as code points
     stable = ids if final else ids[:-1]
@@ -225,8 +135,6 @@ def thinker2talker_async_chunk(transfer_manager, multimodal_output, request, is_
             return None
     if is_finished:
         _ST.pop(rid, None)
-    elif close:
-        st["closed"] = True
     else:
         st["raw_len"] = max(st["raw_len"], len(raw))
     st["sent"] = max(st["sent"], len(stable), 1)
