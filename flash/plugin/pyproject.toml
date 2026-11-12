@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sophon-realtime-flash"
-version = "1.1.6"
+version = "1.2.0"
 description = "Sophon-Realtime-32B-Flash as one vLLM-Omni model: full-duplex listen + write (with sound tags) -> 12.5 Hz streaming speech"
 requires-python = ">=3.10"
 license = "Apache-2.0"

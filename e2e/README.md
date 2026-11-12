@@ -49,7 +49,7 @@ Spoken question in, spoken answer out, `/v1/chat/completions`, users arriving wi
 - **Recommended: up to 16 concurrent users per GPU.**
 - Full duplex (`/v1/realtime`): about 0.45 s (median) from the end of your speech to the first voice.
 - Non-verbal sounds: the talker output is bit-identical to the own engine's, so its NVV-SuperBench result applies (0.75 English / 0.85 Chinese).
-- One reply is spoken for at most about 2 to 2.5 minutes and then ends at a sentence end (the talker stays accurate up to about 150 s of continuous speech; `SOPHON_MAX_SPEECH_S` changes the limit). Replies of up to about 2 minutes were tested and play to the end. Requests that are cancelled free their slot at once.
+- Long replies are spoken to their end, however long (tested up to 14 minutes): the talker speaks them in segments of about 25–40 s, each a fresh context on the rest of the text, so it stays accurate. Requests that are cancelled free their slot at once.
 - More GPUs: one instance per GPU (`GPU=1 PORT=8001 bash start.sh`, …) behind a load balancer.
 
 ## Other GPUs
