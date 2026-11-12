@@ -21,9 +21,6 @@ from vllm_omni.model_executor.stage_input_processors.tts_utils import extract_la
 logger = init_logger("vllm_omni.sophon_realtime.proc")
 
 LEAD = int(os.environ.get("SOPHON_LEAD", "5"))
-SEG_HOLD = int(os.environ.get("SOPHON_SEG_HOLD", "40"))          # segmented replies: within this many tokens of the segment limit, hold back text after the last sentence end
-MAX_SPEECH_S = float(os.environ.get("SOPHON_MAX_SPEECH_S", "50"))  # unsegmented requests: stop speaking at the last sentence end before this much speech
-SEG_DIR = os.environ.get("SOPHON_SEG_DIR", "/dev/shm/sophon_seg")
 POINT = {"[laughter]", "[breath]", "[sigh]", "[cough]", "[quick_breath]"}
 SPAN = {"laughter", "strong"}
 CLOSE = {"[": "]", "<": ">", "(": ")", "（": "）", "【": "】"}
@@ -69,10 +66,10 @@ def tag_clean(s: str, final: bool) -> str:
         if c in "*#`":
             buf = buf[1:]; continue
         j = buf.find(CLOSE[c], 1)
-        if j < 0:
-            if len(buf) > 40:
+        if j < 0 or j > 40:             # a bracket that does not close within 40 characters is not a tag / aside: speak its text
+            if j > 40 or len(buf) > 40:  # (decided the same way before and after it closes, so the text never shrinks)
                 buf = buf[1:]; continue
-            break
+            break                       # may still close: hold it back
         tok, buf = buf[:j + 1], buf[j + 1:]
         if c in "[<":
             emit_tag(tok)
@@ -112,45 +109,6 @@ def speech_seconds(text: str) -> float:
     t = strip_tags(text); cjk = sum(1 for c in t if "\u3040" <= c <= "\u9fff" or "\uac00" <= c <= "\ud7af")
     words = len(re.sub(r"[\u3040-\u9fff\uac00-\ud7af]", " ", t).split())
     return cjk * 0.22 + words * 0.4
-
-
-def _seg_path(rid: str) -> str:
-    import hashlib
-    return os.path.join(SEG_DIR, hashlib.sha1(rid.encode()).hexdigest() + ".json")
-
-
-def seg_handoff(rid: str, said_raw):
-    """Segment end: tell the plugin which raw text was actually spoken (None: the reply ended by itself)."""
-    import json
-    try:
-        os.makedirs(SEG_DIR, exist_ok=True); tmp = _seg_path(rid) + ".tmp"
-        with open(tmp, "w") as f: json.dump({"rid": rid, "said": said_raw}, f, ensure_ascii=False)
-        os.replace(tmp, _seg_path(rid))
-    except Exception:  # noqa: BLE001
-        pass
-
-
-def seg_read(rid: str, wait: float = 1.0):
-    """Plugin side: the handoff for a request id (exact or prefix match); returns (found, said_raw)."""
-    import json, time
-    end = time.monotonic() + wait
-    while True:
-        try:
-            for n in ([_seg_path(rid)] + [os.path.join(SEG_DIR, x) for x in os.listdir(SEG_DIR) if x.endswith(".json")]):
-                try:
-                    with open(n) as f: d = json.load(f)
-                except Exception:  # noqa: BLE001
-                    continue
-                r = d.get("rid") or ""
-                if r == rid or r.startswith(rid) or rid.startswith(r):
-                    try: os.remove(n)
-                    except Exception: pass  # noqa: E701
-                    return True, d.get("said")
-        except FileNotFoundError:
-            pass
-        if time.monotonic() >= end:
-            return False, None
-        time.sleep(0.05)
 
 
 def _tokenizer(tm):
@@ -202,31 +160,7 @@ def thinker2talker_async_chunk(transfer_manager, multimodal_output, request, is_
     out = [int(t) for t in (request.output_token_ids or [])]
     raw = cut_tool(tok.decode(out, skip_special_tokens=True), is_finished)
     st = _ST.setdefault(rid, {"sent": 0, "raw_len": 0})
-    if st.get("closed"):
-        if is_finished: _ST.pop(rid, None)
-        return None
-    cont = _entry(request, "sophon_cont") == "1"
-    final = is_finished; close = False
-    if cont:                                   # segmented reply: never let the talker speak past the last sentence end of a segment
-        maxt = int(getattr(getattr(request, "sampling_params", None), "max_tokens", 0) or 0)
-        if maxt and len(out) >= maxt - SEG_HOLD:
-            keep = max(last_boundary(raw), st["raw_len"])
-            hit = is_finished and len(out) >= maxt
-            if keep > 0 and (not is_finished or hit):
-                raw = raw[:keep]; final = final or hit
-            if hit: seg_handoff(rid, raw)
-        if is_finished and not (maxt and len(out) >= maxt): seg_handoff(rid, None)
-    else:                                      # unsegmented (e.g. HTTP with a large max_tokens): end the speech at a sentence end before MAX_SPEECH_S
-        sp = speech_seconds(tag_clean(raw, is_finished)) if MAX_SPEECH_S > 0 else 0.0
-        if sp > MAX_SPEECH_S - 8:              # within 8 s of the cap: hold text back at sentence ends
-            b = last_boundary(raw)
-            while b > st["raw_len"] and speech_seconds(tag_clean(raw[:b], True)) > MAX_SPEECH_S:
-                b = last_boundary(raw, b - 1)
-            keep = max(b, st["raw_len"])
-            if sp > MAX_SPEECH_S:
-                raw = raw[:keep]; final = True; close = True
-            elif not is_finished:
-                raw = raw[:keep]
+    final = is_finished
     text = tag_clean(raw, final).lstrip()
     ids = _talker_tokenizer().encode(text, allowed_special="all") if text else []
     stable = ids if final else ids[:-1]
@@ -237,8 +171,6 @@ def thinker2talker_async_chunk(transfer_manager, multimodal_output, request, is_
             return None
     if is_finished:
         _ST.pop(rid, None)
-    elif close:
-        st["closed"] = True
     else:
         st["raw_len"] = max(st["raw_len"], len(raw))
     st["sent"] = max(st["sent"], len(stable), 1)
@@ -277,9 +209,75 @@ _MISSING: set[str] = set()
 
 
 def talker2code2wav_async_chunk(transfer_manager, multimodal_output, request, is_finished: bool = False):
-    """vLLM-Omni's CosyVoice3 chunker, with the voice prompt (precomputed flow conditioning) supplied on the first call."""
+    """Talker tokens -> code2wav chunks: vLLM-Omni's CosyVoice3 chunk schedule (first hop + prompt pad, pre-lookahead,
+    growing hop), with three differences:
+    - the voice prompt (precomputed flow conditioning) is supplied on the first call;
+    - incremental: each call reads only the new talker tokens and sends codec_left_context_frames of left context plus
+      the new hop (the stock chunker re-reads and re-sends every token spoken so far, so its cost per call grows with
+      the reply and a long reply falls behind real time);
+    - long replies are spoken in segments (segreg): the request's output restarts at every segment, the segments spoken
+      before are on request._sophon_prev_out, so the token stream read here stays cumulative."""
     from vllm_omni.model_executor.stage_input_processors import cosyvoice3 as _cv
-    state = transfer_manager.request_payload.get(request.external_req_id)
-    if not isinstance(state, dict) or "_cosyvoice3_async_state" not in state:
-        multimodal_output = _voice_payload(request)
-    return _cv.talker2code2wav_async_chunk(transfer_manager, multimodal_output, request, is_finished)
+    from vllm_omni.data_entry_keys import CodesStruct
+    rid = request.external_req_id
+    finished = bool(is_finished or request.is_finished())
+    cfg = getattr(getattr(transfer_manager, "connector", None), "config", {}) or {}
+    cfg = cfg.get("extra", cfg) if isinstance(cfg, dict) else {}
+    hop0 = int(cfg.get("codec_chunk_frames", 25)); vocab = int(cfg.get("codec_vocab_size", 6561))
+    look = int(cfg.get("codec_pre_lookahead_frames", 3)); max_hop = int(cfg.get("codec_max_chunk_frames", 4 * hop0))
+    scale = int(cfg.get("codec_stream_scale_factor", 2)); left = int(cfg.get("codec_left_context_frames", 25))
+    rs = transfer_manager.request_payload.get(rid)
+    if not isinstance(rs, dict) or "_sophon_chunk" not in rs:
+        mm = _voice_payload(request)["embed"]
+        pp = {k: _cv._to_cpu_tensor(mm.get(k)) for k in ("speech_token", "speech_feat", "embedding")}
+        st_, sf_ = _cv.unpad_prompt_conditioning(pp["speech_token"], pp["speech_feat"], mm.get("speech_token_len"))
+        pp["speech_token"] = st_
+        if sf_ is not None:
+            pp["speech_feat"] = sf_
+        plen = int(pp["speech_token"].shape[1]) if pp["speech_token"] is not None and pp["speech_token"].ndim >= 2 else 0
+        pad = ((plen + hop0 - 1) // hop0) * hop0 - plen if plen > 0 else 0
+        rs = {"_sophon_chunk": {"seen": 0, "frames": [], "emitted": 0, "hop": hop0, "pad": pad, "sent_prompt": False,
+                                "done": False, "prompt": pp}}
+        transfer_manager.request_payload[rid] = rs
+    s = rs["_sophon_chunk"]
+    if s["done"]:
+        return None
+    prev = getattr(request, "_sophon_prev_out", None) or ()
+    out = request.output_token_ids
+    total = len(prev) + len(out)
+    if total > s["seen"]:
+        k = s["seen"]
+        new = (list(prev[k:]) + list(out)) if k < len(prev) else list(out[k - len(prev):])
+        s["seen"] = total
+        s["frames"].extend(int(t) for t in new if 0 <= int(t) < vocab)
+    frames = s["frames"]; n = len(frames); em = s["emitted"]
+
+    def embed_once():
+        if s["sent_prompt"]:
+            return None
+        s["sent_prompt"] = True
+        return _cv._build_prompt_embed_struct(s["prompt"])
+
+    if finished and n <= em:
+        s["done"] = True
+        return OmniPayloadStruct(codes=CodesStruct(audio=torch.empty(0, dtype=torch.long)),
+                                 meta=MetaStruct(finished=torch.tensor(True, dtype=torch.bool)), embed=embed_once())
+    hop = s["hop"] + (s["pad"] if em == 0 else 0)
+    if not finished:
+        if n - em < hop + look:
+            return None
+        end = em + hop + look
+    else:
+        end = n
+    start = max(0, em - left)
+    payload = OmniPayloadStruct(
+        codes=CodesStruct(audio=torch.tensor(frames[start:end], dtype=torch.long)),
+        meta=MetaStruct(finished=torch.tensor(finished, dtype=torch.bool), stream_finished=torch.tensor(finished, dtype=torch.bool),
+                        req_id=[rid], left_context_size=em - start),
+        embed=embed_once())
+    if not finished:
+        s["emitted"] = em + hop
+        s["hop"] = min(max(hop0, max_hop), max(hop0, s["hop"] * scale))
+    else:
+        s["done"] = True
+    return payload
