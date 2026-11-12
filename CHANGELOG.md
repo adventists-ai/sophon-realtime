@@ -14,7 +14,7 @@ Second digit: new features or new weights; third digit: fixes only.
 - Fix (Flash): the first reply after a start took about 10 s to its first audio (a tokenizer was loaded on the first reply; it now loads at start-up).
 - Tag: audio chunks of 10, 10, 20, 40 … speech tokens (was 10, 20, 40 …; `codec_stream_hold_chunks: 2`). A doubled second chunk often arrived after the first one (0.24 s of audio) had already played, so most replies paused once near their start. On an H100 with 16 users the pauses right after the first chunk drop from 32 to 11 in 64 replies; first audio rises by about 0.05 s with 4 users and 0.08 s with 16 (no change for one user).
 - E2E vLLM-Omni build: the plugin now shares Tag's request handling (the tool follow-up fix from Tag, no 135 s speech limit). The own engine (`scripts/`) is unchanged: it already speaks sentence by sentence, and its gateway still ends a reply at `--reply-max-tokens` (1000 by default, about 4.6 minutes).
-- All parts carry 1.2.0. No weight changes (Tag and Flash weights at 1.1.0, E2E at 1.1.4, Flash-4bit at 1.1.6).
+- All parts carry 1.2.0. No weight changes (Tag and Flash weights at 1.1.0, E2E at 1.1.4). Flash-4bit runs on the same Flash code and was re-checked with it (two long replies at once: 435 s and 568 s, with the 32 GB settings); its weight repositories are tagged `v1.2.0` (same files as `v1.1.6`).
 
 ## 1.1.6 (2026-11-13): Flash-4bit for 32 GB GPUs; Flash turns CUDA MPS on by default
 
