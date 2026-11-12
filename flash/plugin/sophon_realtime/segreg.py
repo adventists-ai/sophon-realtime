@@ -35,20 +35,39 @@ _CLEAR: set[str] = set()       # scheduler -> model runner: drop the cached outp
 _installed = False
 
 
+def _cjk(c: str) -> bool:
+    return "\u3040" <= c <= "\u9fff" or "\uac00" <= c <= "\ud7af"
+
+
+class _Clock:
+    """speech_seconds() of a text that grows piece by piece, in O(new characters)."""
+    def __init__(self):
+        self.cjk = 0; self.words = 0; self.run = False; self.alnum = False
+
+    def add(self, piece: str) -> float:
+        for c in piece:
+            if _cjk(c) or c.isspace():
+                self.cjk += _cjk(c)
+                if self.run and self.alnum:
+                    self.words += 1
+                self.run = self.alnum = False
+            else:
+                self.run = True; self.alnum = self.alnum or c.isalnum()
+        return self.cjk * 0.22 + (self.words + (self.run and self.alnum)) * 0.4
+
+
 def speech_seconds(text: str) -> float:
     """Rough spoken length: CJK characters ~0.22 s, other words ~0.4 s."""
-    cjk = sum(1 for c in text if "\u3040" <= c <= "\u9fff" or "\uac00" <= c <= "\ud7af")
-    other = "".join(" " if "\u3040" <= c <= "\u9fff" or "\uac00" <= c <= "\ud7af" else c for c in text)
-    return cjk * 0.22 + sum(1 for w in other.split() if any(ch.isalnum() for ch in w)) * 0.4
+    return _Clock().add(text)
 
 
 def find_cut(ids: list[int], start: int, lo: int, piece, fin: bool) -> int | None:
     """Where the segment that starts at ids[start] ends (an index > lo, the text fed so far), or None (not decidable yet,
     or the reply ends first). From SEEK_S seconds of estimated speech: after the next sentence end; from FORCE_S: after
     a clause end within the next 12 tokens, else right there. piece(id) -> the token's text."""
-    text = ""
+    clock = _Clock()
     for j in range(start, len(ids)):
-        text += piece(ids[j]); sec = speech_seconds(text)
+        sec = clock.add(piece(ids[j]))
         if j < lo or sec < SEEK_S:
             continue
         p = piece(ids[j]).rstrip(" ")

@@ -55,6 +55,10 @@ class SophonTTSTalker(Qwen3TTSTalkerForConditionalGeneration):
         self._pieces: dict[int, str] = {}
         if segreg.SEEK_S > 0:
             segreg.install(logger)
+            try:                                  # load the thinker tokenizer now, not on the first reply (~10 s)
+                self._piece(0)
+            except Exception as e:  # noqa: BLE001
+                logger.warning("sophon talker: tokenizer not loaded at start (%r); it loads on the first long reply", e)
         logger.info("SophonTTSTalker voices dir: %s (%s)", self._voice_dir,
                     sorted(os.listdir(self._voice_dir)) if os.path.isdir(self._voice_dir) else "missing")
 
