@@ -60,6 +60,7 @@ https://github.com/user-attachments/assets/1d9442ef-84b0-45a3-acd4-2d05a9562397
 
 ## News
 
+- **2026-11-13 · Sophon-Realtime on Mac:** Flash-4bit runs locally on Apple silicon (MLX, 36 GB+ recommended), full duplex with turn-taking, barge-in and echo cancellation; it starts speaking about 1 s after you stop. [mac/](mac/README.md) · [weights](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash-4bit-MLX)
 - **2026-11-13 · v1.2: long replies are spoken to the end** in Tag, Flash and E2E, however long they are; plus **Flash-4bit** for one 32 GB GPU. [Release notes](https://github.com/adventists-ai/sophon-realtime/releases/tag/v1.2.0) · [Flash-4bit](flash/README.md#flash-4bit-one-32-gb-gpu)
 - **2026-11-11 · v1.1: zero-shot voice cloning** in Tag and Flash: a few seconds of audio and it talks to you in that voice, in real time. [Watch the demo](#zero-shot-voice-cloning-new-in-v11)
 - **2026-11-11 · E2E becomes a full build on one GPU**, with first audio in about 0.25 s; it can also be served by vLLM-Omni like Tag and Flash. [Details](#e2e)
@@ -141,6 +142,15 @@ python client_example.py --wav my_question.wav --lang en --voice chelsie
 ```
 
 Both serve `ws://HOST:PORT/v1/realtime` (full duplex, OpenAI-Realtime-style) and `POST /v1/chat/completions` (audio in, text + audio out). Details: [tag/README.md](tag/README.md) · [flash/README.md](flash/README.md).
+
+**Mac** (Apple silicon, 36 GB+ unified memory recommended; runs locally with MLX):
+
+```bash
+cd sophon-realtime && bash mac/install.sh   # environment + Sophon-Realtime-32B-Flash-4bit-MLX (~24 GB)
+~/sophon-mac/sophon --lang en               # talk through your microphone
+```
+
+Details: [mac/README.md](mac/README.md).
 
 **Optional: Live mode** (OpenAI GPT-Live compatible, see [live/](live/README.md)), next to a running engine:
 

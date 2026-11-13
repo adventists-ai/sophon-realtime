@@ -60,6 +60,7 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 
 ## 最新进展
 
+- **2026-11-13 · Mac 版上线**：Flash-4bit 可以在 Apple 芯片的 Mac 上本地运行（MLX，推荐 36 GB 及以上内存），全双工，支持话轮判断、打断和回音消除；你说完约 1 秒开口。[mac/](mac/README_CN.md) · [权重](https://modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash-4bit-MLX)
 - **2026-11-13 · v1.2：长回复完整说完**，Tag、Flash、E2E 三个版本都不再限制语音时长；同时发布 **Flash-4bit**，一张 32 GB 显卡就能跑。[发布说明](https://github.com/adventists-ai/sophon-realtime/releases/tag/v1.2.0) · [Flash-4bit](flash/README_CN.md#flash-4bit一张-32-gb-显卡)
 - **2026-11-11 · v1.1：零样本声音克隆**，Tag 版和 Flash 版均已支持。几秒钟的录音，就能用这个声音和你实时对话。[看演示视频](#零样本声音克隆v11-新增)
 - **2026-11-11 · E2E 成为正式版本，单卡即可运行**，单路首包约 0.25 秒；也能像 Tag、Flash 一样用 vLLM-Omni 部署。[详情](#e2e)
@@ -141,6 +142,15 @@ python client_example.py --wav my_question.wav --lang zh --voice chelsie
 ```
 
 两者都提供 `ws://HOST:PORT/v1/realtime`（全双工，OpenAI Realtime 风格）和 `POST /v1/chat/completions`（语音进，文字 + 语音出）。详见 [tag/README_CN.md](tag/README_CN.md) · [flash/README_CN.md](flash/README_CN.md)。
+
+**Mac**（Apple 芯片，推荐 36 GB 及以上统一内存；用 MLX 本地运行）：
+
+```bash
+cd sophon-realtime && bash mac/install.sh   # 安装环境并下载 Sophon-Realtime-32B-Flash-4bit-MLX（约 24 GB，国内自动走魔搭）
+~/sophon-mac/sophon                         # 对着麦克风说话
+```
+
+详见 [mac/README_CN.md](mac/README_CN.md)。
 
 **可选：开启 Live 模式**（兼容 OpenAI GPT-Live，见 [live/](live/README_CN.md)），在已启动的引擎旁边运行：
 
