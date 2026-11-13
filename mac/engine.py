@@ -252,9 +252,13 @@ class Brain:
                     st["calls"] += 1
                     if cancelled(): raise KeyboardInterrupt
                     if not st["done"] and st["calls"] % 2 == 0: pull()
+                    while not st["done"] and len(st["buf"]) <= st.get("used", 0):   # never let the talker run out of text mid-reply
+                        if cancelled(): raise KeyboardInterrupt
+                        pull()
                     return (1, len(st["buf"]), brain.pad.shape[-1])
 
-                def __getitem__(s, k): return st["buf"][k[1].start]
+                def __getitem__(s, k):
+                    st["used"] = k[1].start + 1; return st["buf"][k[1].start]
 
             pre = mx.concatenate([self.role, mx.concatenate([mx.broadcast_to(self.pad, (1, 5, self.pad.shape[-1])), self.bos], 1) + self.codec[:, :-1],
                                   first + self.codec[:, -1:]], 1)
