@@ -373,7 +373,7 @@ class Session:
         text, a24 = self.b.reply(hist, (e["ukey"], e["user"]), emit, lambda: r["cancel"], said=said)
         r["text"] = text; r["done"] = True
         with self.lock:
-            if e in self.history:
+            if any(h is e for h in self.history):    # identity: entries hold numpy arrays, == would compare them
                 full = said + text
                 if r["cancel"] and r.get("cut") is not None: full = said + text[: int(len(text) * r["cut"][1])] + "……（被用户打断）"
                 e["a_text"] = full; e["a_audio"] = None; r["entry"] = e
@@ -451,7 +451,7 @@ class Session:
             if self.prev_user is not None and now - self.t_reply < MERGE_WINDOW:
                 # user resumed right after we started replying: we cut in too early -> abort that reply and merge the speech into this turn
                 r["cancel"] = True; self.play(None); self.utt.extend(self.prev_user.tobytes())
-                if r.get("entry") in self.history: self.history.remove(r["entry"])
+                if r.get("entry") is not None: self.history = [h for h in self.history if h is not r["entry"]]   # by identity (entries hold arrays)
                 self.ev("merge_abort", since_reply_s=round(now - self.t_reply, 2))
             elif r["t_out"] is not None and r.get("resume") is not None:
                 # cut again while continuing a reply: keep the original history entry; _run_resume writes what was actually said into it
@@ -462,7 +462,7 @@ class Session:
                 played = now - r["t_out"] - 0.25
                 r["cancel"] = True; self.play(None)
                 txt = r.get("text") or ""; said = txt[: int(len(txt) * max(0.0, min(1.0, played / max(r["gen_s"], 1e-3))))]
-                if r.get("entry") in self.history: self.history.remove(r["entry"])
+                if r.get("entry") is not None: self.history = [h for h in self.history if h is not r["entry"]]   # by identity (entries hold arrays)
                 r["cut"] = (max(played, 0.0), max(0.0, min(1.0, played / max(r["gen_s"], 1e-3))))
                 if r["done"]:
                     a16 = r.get("a16"); a16 = a16[: int(max(played, 0) * SR)] if a16 is not None and played > 0.5 else None
