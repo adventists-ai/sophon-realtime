@@ -60,6 +60,7 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 
 ## 最新进展
 
+- **2026-11-14 · 没有显卡也能用**：在线 API 开放试用，兼容 OpenAI Realtime，三个版本都能调用；注册就送 3 小时免费对话。[控制台](https://api.adventists.cn/console/) · [接口文档](https://api.adventists.cn/console/docs)
 - **2026-11-13 · Mac 版上线**：Flash-4bit 可以在 Apple 芯片的 Mac 上本地运行（MLX，推荐 36 GB 及以上内存），全双工，支持话轮判断、打断和回音消除；你说完约 1 秒开口。[mac/](mac/README_CN.md) · [权重](https://modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash-4bit-MLX)
 - **2026-11-13 · v1.2：长回复完整说完**，Tag、Flash、E2E 三个版本都不再限制语音时长；同时发布 **Flash-4bit**，一张 32 GB 显卡就能跑。[发布说明](https://github.com/adventists-ai/sophon-realtime/releases/tag/v1.2.0) · [Flash-4bit](flash/README_CN.md#flash-4bit一张-32-gb-显卡)
 - **2026-11-11 · v1.1：零样本声音克隆**，Tag 版和 Flash 版均已支持。几秒钟的录音，就能用这个声音和你实时对话。[看演示视频](#零样本声音克隆v11-新增)
@@ -109,6 +110,8 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 - **可以随时打断。** 你一插话它就停下，对话历史里只保留你真正听到的那部分。
 
 ## 快速上手
+
+**没有显卡？** 直接用在线 API：在 [api.adventists.cn/console](https://api.adventists.cn/console/)（海外用 [api.adventists.ai/console](https://api.adventists.ai/console/)）注册，送 3 小时免费对话（按 Flash 计）。接口兼容 OpenAI Realtime 协议，地址 `wss://api.adventists.cn/sophon/v1/realtime`（HTTP：`https://api.adventists.cn/sophon/v1`），`model` 填 `sophon-realtime-tag`、`sophon-realtime-flash` 或 `sophon-realtime-e2e`。完整的 Python 示例见[接口文档](https://api.adventists.cn/console/docs)。
 
 **最快**（Tag 版，一张 80 GB 显卡）：
 

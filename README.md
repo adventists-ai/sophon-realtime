@@ -60,6 +60,7 @@ https://github.com/user-attachments/assets/1d9442ef-84b0-45a3-acd4-2d05a9562397
 
 ## News
 
+- **2026-11-14 · Try it without a GPU:** hosted API, OpenAI Realtime-compatible, with all three builds; sign up and get 3 hours of free voice chat. [Console](https://api.adventists.ai/console/) · [API docs](https://api.adventists.ai/console/docs)
 - **2026-11-13 · Sophon-Realtime on Mac:** Flash-4bit runs locally on Apple silicon (MLX, 36 GB+ recommended), full duplex with turn-taking, barge-in and echo cancellation; it starts speaking about 1 s after you stop. [mac/](mac/README.md) · [weights](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash-4bit-MLX)
 - **2026-11-13 · v1.2: long replies are spoken to the end** in Tag, Flash and E2E, however long they are; plus **Flash-4bit** for one 32 GB GPU. [Release notes](https://github.com/adventists-ai/sophon-realtime/releases/tag/v1.2.0) · [Flash-4bit](flash/README.md#flash-4bit-one-32-gb-gpu)
 - **2026-11-11 · v1.1: zero-shot voice cloning** in Tag and Flash: a few seconds of audio and it talks to you in that voice, in real time. [Watch the demo](#zero-shot-voice-cloning-new-in-v11)
@@ -109,6 +110,8 @@ Talk to it in your own language. Sophon-Realtime listens and answers in the lang
 - **Barge-in.** When you interrupt, it stops and keeps only the part you actually heard in the conversation history.
 
 ## Quick start
+
+**No GPU?** Use the hosted API: sign up at [api.adventists.ai/console](https://api.adventists.ai/console/) and get 3 hours of free voice chat (counted on Flash). It speaks the OpenAI Realtime protocol at `wss://api.adventists.ai/sophon/v1/realtime` (HTTP: `https://api.adventists.ai/sophon/v1`); set `model` to `sophon-realtime-tag`, `sophon-realtime-flash` or `sophon-realtime-e2e`. A complete Python example is in the [API docs](https://api.adventists.ai/console/docs).
 
 **Quickest** (Tag build, one 80 GB GPU):
 
