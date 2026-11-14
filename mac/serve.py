@@ -22,6 +22,7 @@ ap.add_argument("--events", action="store_true", help="also send the engine's ev
 ap.add_argument("--followup", type=float, default=6.0, help="seconds of quiet after a reply has been played before the conversation ends (0: never)")
 ap.add_argument("--first", type=float, default=10.0, help="seconds of quiet after connecting, with no reply yet, before the conversation ends (0: never)")
 ap.add_argument("--prebuffer", type=float, default=0.8, help="seconds of reply audio to have ready before it starts playing (also after it has run dry), unless the reply is complete: the engine can generate speech at about the speed it is spoken, and a pause between words is worse than a late start")
+ap.add_argument("--mic-gain", type=float, default=1.0, help="multiplier for the incoming microphone audio, for a client whose microphone path is quiet (for example echo cancellation without gain control)")
 ap.add_argument("--talk-over", action="store_true", help="keep listening while a reply plays, so speech over it interrupts it; only for a client that removes its own echo well")
 ap.add_argument("--echo-tail", type=float, default=0.8, help="seconds after the last reply audio was sent during which the microphone is still ignored: the client plays it later than it receives it, and the room rings on")
 ap.add_argument("--no-aec", action="store_true", help="do not cancel echo here (the client has a headset or does its own)")
@@ -130,6 +131,7 @@ async def handle(ws):
             buf = np.concatenate([buf, x])
             while len(buf) >= FR:
                 f, buf = buf[:FR], buf[FR:]
+                if a.mic_gain != 1.0: f = np.clip(f * a.mic_gain, -1.0, 1.0)
                 now = loop.time(); far = np.zeros(FR, np.float32)
                 while played and played[0][0] + FRAME_S <= now: played.popleft()
                 if played and played[0][0] <= now: far[: min(FR, len(played[0][1]))] = played[0][1][:FR]
