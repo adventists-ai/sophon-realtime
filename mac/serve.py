@@ -2,7 +2,7 @@
 
 The wire format is the simplest one a small device can speak. Binary frames are raw PCM16 mono audio at --rate, in both directions. A text frame {"type": "interrupt"} means "stop talking now": the server sends it when the user barges in, so the client can drop audio it has buffered, and a client may send it to cut the reply itself (a wake word spoken over the reply, for example). Reply audio is sent in 20 ms frames, no further ahead of real time than LEAD_S: the engine produces speech faster than it is spoken, and a small device has no room to hold the difference. With --events the server also sends the engine's own events (reply_start, first_audio, reply_done, barge_in, ...) as text frames.
 
-The conversation ends by itself, after --first seconds of quiet with no reply yet or --followup seconds after a reply has been played: the server sends {"type": "disconnect"} and closes, and the client goes back to waiting for its wake word. The reply audio is also the reference for WebRTC echo cancellation on the incoming audio (--no-aec turns that off for a headset), so the reply is not heard as the user speaking. One conversation at a time: a second client is refused while one is connected.
+The speaker model is WeSpeaker's voxceleb_resnet34_LM.onnx (CC BY 4.0, huggingface.co/Wespeaker/wespeaker-voxceleb-resnet34-LM), needing the onnxruntime package. When it is present, the first voice heard after connecting is taken as the person who woke the device, and speech in other voices (a television, bystanders) is ignored: it starts no reply, does not keep the conversation open, and a reply it cut off is resumed. The conversation ends by itself, after --first seconds of quiet with no reply yet or --followup seconds after a reply has been played: the server sends {"type": "disconnect"} and closes, and the client goes back to waiting for its wake word. The reply audio is also the reference for WebRTC echo cancellation on the incoming audio (--no-aec turns that off for a headset), so the reply is not heard as the user speaking. One conversation at a time: a second client is refused while one is connected.
 
     python serve.py --host ADDRESS [--port 8765] [--rate 24000] [--lang zh|en] [--voice chelsie] [--events]"""
 import argparse, asyncio, collections, json, os, sys
@@ -23,6 +23,8 @@ ap.add_argument("--followup", type=float, default=6.0, help="seconds of quiet af
 ap.add_argument("--first", type=float, default=10.0, help="seconds of quiet after connecting, with no reply yet, before the conversation ends (0: never)")
 ap.add_argument("--no-aec", action="store_true", help="do not cancel echo here (the client has a headset or does its own)")
 ap.add_argument("--delay-ms", type=int, default=250, help="how long after the server sends a reply frame its echo reaches the microphone, as a hint for the echo canceller: the send lead, the client buffer and the room")
+ap.add_argument("--speaker-model", default=os.path.join(os.path.dirname(HERE), "models", "speaker", "voxceleb_resnet34_LM.onnx"), help="WeSpeaker ONNX model; when the file exists, only the voice that spoke first after connecting is answered")
+ap.add_argument("--speaker-threshold", type=float, default=0.5, help="cosine similarity to the owner's voice below which speech is treated as someone else's")
 a = ap.parse_args()
 
 FR = 320                      # the engine takes 20 ms frames at 16 kHz
@@ -56,6 +58,7 @@ async def handle(ws):
 
     def log(m):
         ev = json.loads(m).get("ev")
+        if ev in ("owner_enrolled", "speaker", "bystander"): print(m, flush=True)
         if ev == "reply_start": st["replying"] = st["replied"] = True
         elif ev == "reply_done": st["replying"] = False
         if a.events: loop.call_soon_threadsafe(out.put_nowait, m)
@@ -104,7 +107,7 @@ async def handle(ws):
                 await ws.send(DISCONNECT); await ws.close(); return
 
     echo = None if a.no_aec else Echo(a.delay_ms)
-    sess = Session(brain, play, log=log); sender = asyncio.ensure_future(send()); dog = asyncio.ensure_future(watchdog()); buf = np.zeros(0, np.float32)
+    sess = Session(brain, play, log=log, speaker=speaker, speaker_thr=a.speaker_threshold); sender = asyncio.ensure_future(send()); dog = asyncio.ensure_future(watchdog()); buf = np.zeros(0, np.float32)
     try:
         async for m in ws:
             if isinstance(m, str):
@@ -136,6 +139,10 @@ async def main():
         await asyncio.Future()
 
 
+speaker = None
+if os.path.exists(a.speaker_model):
+    from speaker import Speaker
+    speaker = Speaker(a.speaker_model)
 print("Loading the model (first time ~1 min)...", flush=True)
 brain = Brain(a.root, lang=a.lang, voice=a.voice, sys_prompt=os.path.join(HERE, "system_prompt.json")); brain.warmup()
 try:
