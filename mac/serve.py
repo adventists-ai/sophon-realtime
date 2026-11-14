@@ -45,6 +45,7 @@ async def handle(ws):
     busy = True
     loop = asyncio.get_running_loop(); out = asyncio.Queue()
     st = {"ends": 0.0, "pending": 0, "replying": False, "replied": False}   # what the conversation is doing, for the idle watchdog
+    played = collections.deque()                         # (loop time the client starts playing a frame, that frame at the engine's rate): the echo reference
 
     def play(x):
         """Called by the engine's worker thread with 24 kHz reply audio, or None to stop at once (barge-in)."""
@@ -67,7 +68,7 @@ async def handle(ws):
             else:
                 m = b"" if out.empty() else out.get_nowait()
             if m is None:
-                pending.clear(); ends = 0.0; st["ends"] = 0.0; st["pending"] = 0; kept = []      # audio not yet sent is never sent; events are
+                pending.clear(); played.clear(); ends = 0.0; st["ends"] = 0.0; st["pending"] = 0; kept = []      # audio not yet sent is never sent; events are
                 while not out.empty():
                     q = out.get_nowait()
                     if isinstance(q, str): kept.append(q)
@@ -79,7 +80,9 @@ async def handle(ws):
                 pending.extend(m[i:i + step] for i in range(0, len(m), step))
             if pending and loop.time() >= ends - LEAD_S:
                 f = pending.popleft(); await ws.send(f)
-                ends = max(ends, loop.time()) + len(f) / (2 * a.rate)
+                start = max(ends, loop.time()); ends = start + len(f) / (2 * a.rate)
+                ref = np.frombuffer(f, "<i2").astype(np.float32) / 32768.0
+                played.append((start, ref if a.rate == SR else resample_poly(ref, SR, a.rate).astype(np.float32)))
             st["ends"] = ends; st["pending"] = len(pending)
 
     async def watchdog():
@@ -111,7 +114,10 @@ async def handle(ws):
             buf = np.concatenate([buf, x])
             while len(buf) >= FR:
                 f, buf = buf[:FR], buf[FR:]
-                sess.feed(f)
+                now = loop.time(); far = np.zeros(FR, np.float32)
+                while played and played[0][0] + FRAME_S <= now: played.popleft()
+                if played and played[0][0] <= now: far[: min(FR, len(played[0][1]))] = played[0][1][:FR]
+                sess.feed(f, far)
     except websockets.ConnectionClosed:
         pass
     finally:
