@@ -2,7 +2,7 @@
 Hearing, turn-taking and replying are all done by our own model: the user's audio goes straight into the thinker through its own audio tower; whether the
 user has finished is the thinker's own answer to a turn question asked inside the reply's context (same check schedule and thresholds as the server),
 so the audio is computed once and the reply continues from the same cache."""
-import collections, hashlib, json, random, re, threading, time, uuid, queue
+import collections, hashlib, json, os, random, re, threading, time, uuid, queue
 import numpy as np, mlx.core as mx
 from mlx_lm import load as lm_load, stream_generate
 from mlx_lm.models.cache import make_prompt_cache, trim_prompt_cache
@@ -282,7 +282,8 @@ class Session:
     """One conversation = the plugin's SophonBuffer logic: energy VAD on 20 ms frames, turn questions at 0.2/0.35/0.5/0.8/1.3/2.0 s of silence
     (thresholds 0.95..0.25), fallback at 2 s, merge-and-abort when the user resumes within 2 s of a reply, barge-in cuts the reply and the history."""
 
-    def __init__(self, brain, play, log=print, speaker=None, speaker_thr=0.5):
+    def __init__(self, brain, play, log=print, speaker=None, speaker_thr=0.5, dump_dir=None):
+        self.dump_dir = dump_dir
         self.spk = speaker; self.spk_thr = speaker_thr; self.owner = None; self.owner_n = 0; self.uid = 0; self.spk_uid = -1
         self.bystander = False; self.quiet_ms = 0
         self.b = brain; self.play = play; self.log = log; self.jobs = queue.Queue(); self.lock = threading.Lock()
@@ -307,6 +308,10 @@ class Session:
                         self.owner = e.copy(); self.owner_n = 1; self.ev("owner_enrolled", speech_s=round(len(audio) / SR, 2)); continue
                     o = self.owner / np.linalg.norm(self.owner); score = float(e @ o); mine = score >= self.spk_thr
                     self.ev("speaker", score=round(score, 3), owner=mine)
+                    if self.dump_dir:
+                        import wave; os.makedirs(self.dump_dir, exist_ok=True)
+                        with wave.open(os.path.join(self.dump_dir, f"{time.strftime('%H%M%S')}-{score:.2f}-{'owner' if mine else 'other'}.wav"), "wb") as w:
+                            w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR); w.writeframes((np.clip(audio, -1, 1) * 32767).astype("<i2").tobytes())
                     if mine:
                         if self.owner_n < OWNER_N: self.owner = self.owner + e; self.owner_n += 1     # the voice model improves with more of the owner's speech
                     else: self._bystander()

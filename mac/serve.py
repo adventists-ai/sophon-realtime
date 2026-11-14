@@ -25,6 +25,8 @@ ap.add_argument("--no-aec", action="store_true", help="do not cancel echo here (
 ap.add_argument("--delay-ms", type=int, default=250, help="how long after the server sends a reply frame its echo reaches the microphone, as a hint for the echo canceller: the send lead, the client buffer and the room")
 ap.add_argument("--speaker-model", default=os.path.join(os.path.dirname(HERE), "models", "speaker", "voxceleb_resnet34_LM.onnx"), help="WeSpeaker ONNX model; when the file exists, only the voice that spoke first after connecting is answered")
 ap.add_argument("--speaker-threshold", type=float, default=0.5, help="cosine similarity to the owner's voice below which speech is treated as someone else's")
+ap.add_argument("--log-events", action="store_true", help="print every engine event to the server log")
+ap.add_argument("--dump-dir", help="save the audio behind each speaker verdict here, to calibrate the threshold; it is audio of the room, so keep it local and delete it afterwards")
 a = ap.parse_args()
 
 FR = 320                      # the engine takes 20 ms frames at 16 kHz
@@ -58,7 +60,7 @@ async def handle(ws):
 
     def log(m):
         ev = json.loads(m).get("ev")
-        if ev in ("owner_enrolled", "speaker", "bystander"): print(m, flush=True)
+        if a.log_events: print(m, flush=True)
         if ev == "reply_start": st["replying"] = st["replied"] = True
         elif ev == "reply_done": st["replying"] = False
         if a.events: loop.call_soon_threadsafe(out.put_nowait, m)
@@ -107,7 +109,7 @@ async def handle(ws):
                 await ws.send(DISCONNECT); await ws.close(); return
 
     echo = None if a.no_aec else Echo(a.delay_ms)
-    sess = Session(brain, play, log=log, speaker=speaker, speaker_thr=a.speaker_threshold); sender = asyncio.ensure_future(send()); dog = asyncio.ensure_future(watchdog()); buf = np.zeros(0, np.float32)
+    sess = Session(brain, play, log=log, speaker=speaker, speaker_thr=a.speaker_threshold, dump_dir=a.dump_dir); sender = asyncio.ensure_future(send()); dog = asyncio.ensure_future(watchdog()); buf = np.zeros(0, np.float32)
     try:
         async for m in ws:
             if isinstance(m, str):
