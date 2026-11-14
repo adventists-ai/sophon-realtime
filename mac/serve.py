@@ -21,6 +21,7 @@ ap.add_argument("--rate", type=int, default=24000, help="sample rate of the clie
 ap.add_argument("--events", action="store_true", help="also send the engine's events to the client as text frames")
 ap.add_argument("--followup", type=float, default=6.0, help="seconds of quiet after a reply has been played before the conversation ends (0: never)")
 ap.add_argument("--first", type=float, default=10.0, help="seconds of quiet after connecting, with no reply yet, before the conversation ends (0: never)")
+ap.add_argument("--prebuffer", type=float, default=0.8, help="seconds of reply audio to have ready before it starts playing (also after it has run dry), unless the reply is complete: the engine can generate speech at about the speed it is spoken, and a pause between words is worse than a late start")
 ap.add_argument("--talk-over", action="store_true", help="keep listening while a reply plays, so speech over it interrupts it; only for a client that removes its own echo well")
 ap.add_argument("--echo-tail", type=float, default=0.8, help="seconds after the last reply audio was sent during which the microphone is still ignored: the client plays it later than it receives it, and the room rings on")
 ap.add_argument("--no-aec", action="store_true", help="do not cancel echo here (the client has a headset or does its own)")
@@ -71,7 +72,9 @@ async def handle(ws):
         step = int(a.rate * FRAME_S) * 2                    # bytes in one frame
         pending = collections.deque(); ends = 0.0           # loop time at which the audio already sent finishes playing
         while True:
-            wait = ends - LEAD_S - loop.time() if pending else None
+            now = loop.time()
+            held = bool(pending) and ends <= now and len(pending) * FRAME_S < a.prebuffer and st["replying"]    # audio is not yet far enough ahead of its generation to start playing
+            wait = (0.05 if held else ends - LEAD_S - now) if pending else None
             if wait is None or wait > 0:
                 try: m = await asyncio.wait_for(out.get(), wait)
                 except asyncio.TimeoutError: m = b""
@@ -88,7 +91,8 @@ async def handle(ws):
                 await ws.send(m)
             else:
                 pending.extend(m[i:i + step] for i in range(0, len(m), step))
-            if pending and loop.time() >= ends - LEAD_S:
+            held = bool(pending) and ends <= loop.time() and len(pending) * FRAME_S < a.prebuffer and st["replying"]
+            if pending and not held and loop.time() >= ends - LEAD_S:
                 f = pending.popleft(); await ws.send(f)
                 start = max(ends, loop.time()); ends = start + len(f) / (2 * a.rate)
                 ref = np.frombuffer(f, "<i2").astype(np.float32) / 32768.0
