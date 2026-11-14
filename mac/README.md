@@ -28,6 +28,19 @@ produces the same files from it in about a minute. If the download is interrupte
 Options: `--no-aec` turns echo cancellation off (headset), `--in` / `--out` pick audio devices (`--list` shows them), `--voice` picks a voice.
 The first start loads the model in about 10 seconds.
 
+## Serve it to a device on the network
+
+```bash
+~/sophon-mac/sophon-serve --host 192.168.1.20 --lang en
+```
+
+`sophon-serve` runs the same engine with a WebSocket in place of the Mac's microphone and speakers, so a small device on the network can be
+the microphone and the speaker. Binary frames are raw PCM16 mono audio (24 kHz by default, `--rate` changes it) in both directions. The
+server sends the text frame `{"type": "interrupt"}` when you cut in, so the client can drop the audio it has buffered, and a client may send
+the same frame to cut the reply. `--events` also sends the engine's events as text frames. The client cancels its own echo (a headset, or a
+device with hardware echo cancellation). There is no authentication, so `--host` is required and names one interface's address. One
+conversation at a time.
+
 ## Speed (M4 Max, 36 GB)
 | | |
 |---|---|

@@ -37,18 +37,22 @@ if [ -z "$UV" ]; then
 fi
 [ -x "$UV" ] || die "could not install uv."
 [ -x "$H/.venv/bin/python" ] || "$UV" venv -q --python 3.12 "$H/.venv"
-"$UV" pip install -q --python "$H/.venv/bin/python" "mlx>=0.29" "mlx-lm>=0.28" "mlx-audio==0.6.5" livekit sounddevice soundfile scipy numpy \
+"$UV" pip install -q --python "$H/.venv/bin/python" "mlx>=0.29" "mlx-lm>=0.28" "mlx-audio==0.6.5" livekit sounddevice soundfile scipy numpy websockets \
   "transformers>=4.57" huggingface_hub modelscope
 
 # --- code ------------------------------------------------------------------------------------------------------------------------------
 say "Program files"
 mkdir -p "$H/app"
-for f in engine.py mlx_ear.py aec.py live.py system_prompt.json; do rm -f "$H/app/$f"; cp "$HERE/$f" "$H/app/$f"; chmod 644 "$H/app/$f"; done
+for f in engine.py mlx_ear.py aec.py live.py serve.py system_prompt.json; do rm -f "$H/app/$f"; cp "$HERE/$f" "$H/app/$f"; chmod 644 "$H/app/$f"; done
 cat > "$H/sophon" <<EOS
 #!/bin/bash
 exec "$H/.venv/bin/python" "$H/app/live.py" "\$@"
 EOS
-chmod +x "$H/sophon"
+cat > "$H/sophon-serve" <<EOS
+#!/bin/bash
+exec "$H/.venv/bin/python" "$H/app/serve.py" "\$@"
+EOS
+chmod +x "$H/sophon" "$H/sophon-serve"
 
 # --- weights ---------------------------------------------------------------------------------------------------------------------------
 # Sophon-Realtime-32B-Flash-4bit-MLX = the Flash-4bit weights repacked for MLX (bit-identical). convert.py does the same from the CUDA repo.
