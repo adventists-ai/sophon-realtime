@@ -2,7 +2,7 @@
 
 The wire format is the simplest one a small device can speak. Binary frames are raw PCM16 mono audio at --rate, in both directions. A text frame {"type": "interrupt"} means "stop talking now": the server sends it when the user barges in, so the client can drop audio it has buffered, and a client may send it to cut the reply itself (a wake word spoken over the reply, for example). Reply audio is sent in 20 ms frames, no further ahead of real time than LEAD_S: the engine produces speech faster than it is spoken, and a small device has no room to hold the difference. With --events the server also sends the engine's own events (reply_start, first_audio, reply_done, barge_in, ...) as text frames.
 
-The client is expected to cancel its own echo (a headset, or a device with hardware echo cancellation), so none is done here. One conversation at a time: a second client is refused while one is connected.
+The conversation ends by itself, after --first seconds of quiet with no reply yet or --followup seconds after a reply has been played: the server sends {"type": "disconnect"} and closes, and the client goes back to waiting for its wake word. The client is expected to cancel its own echo (a headset, or a device with hardware echo cancellation), so none is done here. One conversation at a time: a second client is refused while one is connected.
 
     python serve.py --host ADDRESS [--port 8765] [--rate 24000] [--lang zh|en] [--voice chelsie] [--events]"""
 import argparse, asyncio, collections, json, os, sys
@@ -18,11 +18,15 @@ ap.add_argument("--host", required=True, help="address to listen on; there is no
 ap.add_argument("--port", type=int, default=8765)
 ap.add_argument("--rate", type=int, default=24000, help="sample rate of the client's PCM16 audio, both directions")
 ap.add_argument("--events", action="store_true", help="also send the engine's events to the client as text frames")
+ap.add_argument("--followup", type=float, default=6.0, help="seconds of quiet after a reply has been played before the conversation ends (0: never)")
+ap.add_argument("--first", type=float, default=10.0, help="seconds of quiet after connecting, with no reply yet, before the conversation ends (0: never)")
 a = ap.parse_args()
 
 FR = 320                      # the engine takes 20 ms frames at 16 kHz
 OUT_RATE = 24000              # the engine's reply audio
 INTERRUPT = json.dumps({"type": "interrupt"})
+DISCONNECT = json.dumps({"type": "disconnect"})
+MAX_UTT_S = 15.0             # speech running longer than this no longer keeps the conversation open
 FRAME_S = 0.02               # reply audio goes out in frames this long
 LEAD_S = 0.12                # and at most this far ahead of the moment the client will play it
 busy = False
@@ -40,12 +44,16 @@ async def handle(ws):
         await ws.close(1013, "one conversation at a time"); return
     busy = True
     loop = asyncio.get_running_loop(); out = asyncio.Queue()
+    st = {"ends": 0.0, "pending": 0, "replying": False, "replied": False}   # what the conversation is doing, for the idle watchdog
 
     def play(x):
         """Called by the engine's worker thread with 24 kHz reply audio, or None to stop at once (barge-in)."""
         loop.call_soon_threadsafe(out.put_nowait, None if x is None else to_pcm(x))
 
     def log(m):
+        ev = json.loads(m).get("ev")
+        if ev == "reply_start": st["replying"] = st["replied"] = True
+        elif ev == "reply_done": st["replying"] = False
         if a.events: loop.call_soon_threadsafe(out.put_nowait, m)
 
     async def send():
@@ -59,7 +67,7 @@ async def handle(ws):
             else:
                 m = b"" if out.empty() else out.get_nowait()
             if m is None:
-                pending.clear(); ends = 0.0; kept = []      # audio not yet sent is never sent; events are
+                pending.clear(); ends = 0.0; st["ends"] = 0.0; st["pending"] = 0; kept = []      # audio not yet sent is never sent; events are
                 while not out.empty():
                     q = out.get_nowait()
                     if isinstance(q, str): kept.append(q)
@@ -72,8 +80,24 @@ async def handle(ws):
             if pending and loop.time() >= ends - LEAD_S:
                 f = pending.popleft(); await ws.send(f)
                 ends = max(ends, loop.time()) + len(f) / (2 * a.rate)
+            st["ends"] = ends; st["pending"] = len(pending)
 
-    sess = Session(brain, play, log=log); sender = asyncio.ensure_future(send()); buf = np.zeros(0, np.float32)
+    async def watchdog():
+        """Ends the conversation once nothing has happened for a while, so the device is back to waiting for its wake word
+        and room audio (a television, other people) is no longer streamed to the model. Busy means: a reply being generated,
+        sent or played, or the user speaking (for at most MAX_UTT_S, so continuous speech cannot hold it open)."""
+        idle_since = loop.time(); speaking_since = None
+        while True:
+            await asyncio.sleep(0.25); now = loop.time()
+            with sess.lock: speaking = sess.speech_ms > 0
+            speaking_since = (speaking_since or now) if speaking else None
+            user_busy = speaking_since is not None and now - speaking_since < MAX_UTT_S
+            if st["replying"] or st["pending"] or now < st["ends"] or user_busy: idle_since = now; continue
+            limit = a.followup if st["replied"] else a.first
+            if limit > 0 and now - idle_since >= limit:
+                await ws.send(DISCONNECT); await ws.close(); return
+
+    sess = Session(brain, play, log=log); sender = asyncio.ensure_future(send()); dog = asyncio.ensure_future(watchdog()); buf = np.zeros(0, np.float32)
     try:
         async for m in ws:
             if isinstance(m, str):
@@ -93,7 +117,7 @@ async def handle(ws):
     finally:
         with sess.lock:
             if sess.reply is not None: sess.reply["cancel"] = True
-        sender.cancel(); busy = False
+        sender.cancel(); dog.cancel(); busy = False
 
 
 async def main():
