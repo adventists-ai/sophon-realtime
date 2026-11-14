@@ -2,7 +2,7 @@
 Hearing, turn-taking and replying are all done by our own model: the user's audio goes straight into the thinker through its own audio tower; whether the
 user has finished is the thinker's own answer to a turn question asked inside the reply's context (same check schedule and thresholds as the server),
 so the audio is computed once and the reply continues from the same cache."""
-import collections, hashlib, json, random, re, threading, time, uuid, queue
+import collections, hashlib, json, os, random, re, threading, time, uuid, queue
 import numpy as np, mlx.core as mx
 from mlx_lm import load as lm_load, stream_generate
 from mlx_lm.models.cache import make_prompt_cache, trim_prompt_cache
@@ -17,6 +17,10 @@ FIRST_MS = int(__import__("os").environ.get("SOPHON_FIRST_MS", "20"))       # fi
 CHECKS = [0.2, 0.35, 0.5, 0.8, 1.3, 2.0]; THRS = [0.95, 0.85, 0.7, 0.5, 0.35, 0.25]; FALLBACK_S = 2.0; MERGE_WINDOW = 2.0
 SHARED = True        # turn question inside the reply context (one shared prefix); False = the server plugin's separate prompt
 HIST_TURNS = 8; HIST_SEC = 120.0; LEAD = int(__import__("os").environ.get("SOPHON_LEAD", "3")); MAX_REPLY_TOK = 400
+SPK_CHECK_MS = 900          # speech this long is compared with the owner's voice (a shorter stretch gives too noisy an embedding)
+OWNER_N = 5                 # the owner's voice is the mean of up to this many of their utterances
+BYSTANDER_QUIET_MS = 600    # after speech that is not the owner's, input is ignored until the room has been this quiet
+NOISE_CAP = 0.02   # the ambient-floor estimate never rises above this RMS, so speech is still detectable in a loud room
 ECHO_K_START, ECHO_K, ECHO_ADAPT_S = 0.5, 0.12, 3.0   # speech threshold while playing = k x playback loudness (see Session.feed)
 BC_RESUME, BC_THR, BC_WINDOW = True, 0.5, 4.0   # user only says "mm-hmm" over a reply that got cut: continue that reply (as the server)
 RECHECK_MS = 900   # a turn question takes ~0.85 s on an M4 Max: don't start one that would still be running at the fallback
@@ -278,12 +282,48 @@ class Session:
     """One conversation = the plugin's SophonBuffer logic: energy VAD on 20 ms frames, turn questions at 0.2/0.35/0.5/0.8/1.3/2.0 s of silence
     (thresholds 0.95..0.25), fallback at 2 s, merge-and-abort when the user resumes within 2 s of a reply, barge-in cuts the reply and the history."""
 
-    def __init__(self, brain, play, log=print):
+    def __init__(self, brain, play, log=print, speaker=None, speaker_thr=0.5, dump_dir=None):
+        self.dump_dir = dump_dir
+        self.spk = speaker; self.spk_thr = speaker_thr; self.owner = None; self.owner_n = 0; self.uid = 0; self.spk_uid = -1
+        self.bystander = False; self.quiet_ms = 0
         self.b = brain; self.play = play; self.log = log; self.jobs = queue.Queue(); self.lock = threading.Lock()
-        self.history = []; self.last_said = ""; self.noise = 0.003; self.gen = 0; self.sgen = 0; self._reset()
+        self.history = []; self.last_said = ""; self.noise = 0.003; self.floor = collections.deque(maxlen=200); self.floor_n = 0; self.gen = 0; self.sgen = 0; self._reset()
         self.far_hist = collections.deque([0.0] * 10, maxlen=10); self.played_s = 0.0; self.cut = None
         self.pre = bytearray(); self.prev_user = None; self.t_reply = 0.0; self.reply = None; self.events = []
         threading.Thread(target=self._worker, daemon=True).start()
+        if speaker is not None:
+            self.spk_q = queue.Queue(); threading.Thread(target=self._speaker_worker, daemon=True).start()
+
+    def _speaker_worker(self):
+        """Compares the voice of the utterance in progress with the owner's, off the model worker's thread (which may be busy for
+        seconds with a reply). The first voice heard after connecting is the owner's; it is the one that said the wake word."""
+        while True:
+            uid, audio = self.spk_q.get()
+            try:
+                e = self.spk.embed(audio)
+                if e is None: continue
+                with self.lock:
+                    if uid != self.uid: continue
+                    if self.owner is None:
+                        self.owner = e.copy(); self.owner_n = 1; self.ev("owner_enrolled", speech_s=round(len(audio) / SR, 2)); continue
+                    o = self.owner / np.linalg.norm(self.owner); score = float(e @ o); mine = score >= self.spk_thr
+                    self.ev("speaker", score=round(score, 3), owner=mine)
+                    if self.dump_dir:
+                        import wave; os.makedirs(self.dump_dir, exist_ok=True)
+                        with wave.open(os.path.join(self.dump_dir, f"{time.strftime('%H%M%S')}-{score:.2f}-{'owner' if mine else 'other'}.wav"), "wb") as w:
+                            w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR); w.writeframes((np.clip(audio, -1, 1) * 32767).astype("<i2").tobytes())
+                    if mine:
+                        if self.owner_n < OWNER_N: self.owner = self.owner + e; self.owner_n += 1     # the voice model improves with more of the owner's speech
+                    else: self._bystander()
+            except Exception as ex:
+                self.ev("speaker_error", error=repr(ex))
+
+    def _bystander(self):
+        """The speech in progress is not the owner's: drop it, and put back the reply it cut off. Input stays ignored until the room has
+        been quiet for BYSTANDER_QUIET_MS, so continuous speech (a television) does not start it again a moment later."""
+        self.bystander = True; self.quiet_ms = 0; self.ev("bystander")
+        if self.cut is not None: self._resume()
+        else: self._reset()
 
     def _reset(self):
         self.utt = bytearray(); self.voiced = 0; self.speech_ms = 0; self.silence_ms = 0; self.next_check = 0; self.gen += 1
@@ -395,7 +435,16 @@ class Session:
             if fr > 1e-3: self.played_s += 0.02
         with self.lock:
             k = ECHO_K_START if self.played_s < ECHO_ADAPT_S else ECHO_K
+            # ambient floor: the quietest tenth of the last 4 s, speech or not. The estimate below only moves while nobody
+            # is speaking, so a room louder than the fixed threshold would otherwise read as one endless utterance.
+            self.floor.append(r); self.floor_n += 1
+            if self.floor_n % 25 == 0 and len(self.floor) == self.floor.maxlen:
+                self.noise = max(self.noise, min(sorted(self.floor)[len(self.floor) // 10], NOISE_CAP))
             thr = max(0.012, self.noise * 3.5, k * max(self.far_hist))
+            if self.bystander:
+                self.quiet_ms = 0 if r > thr else self.quiet_ms + 20
+                if self.quiet_ms >= BYSTANDER_QUIET_MS: self.bystander = False; self.voiced = 0
+                return
             if self.speech_ms == 0:
                 self.pre.extend(fb)
                 if len(self.pre) > int(0.6 * SR) * 4: del self.pre[: len(self.pre) - int(0.6 * SR) * 4]
@@ -412,6 +461,8 @@ class Session:
                 else:
                     if self.silence_ms == 0: self.t_sil = time.time()
                     self.silence_ms += 20
+            if self.spk is not None and self.spk_uid != self.uid and self.speech_ms >= SPK_CHECK_MS:
+                self.spk_uid = self.uid; self.spk_q.put((self.uid, np.frombuffer(bytes(self.utt), np.float32).copy()))
             if self.speech_ms < 120: return
             if SHARED:
                 # an earlier answer for this pause meets the (lower) threshold of the check point we have reached: reply, no new compute
@@ -432,12 +483,7 @@ class Session:
                 self.jobs.put(("check", (key, audio, self.last_said, self.gen, thr_, self.next_check, self.t_sil, self.sgen)))
             if self.silence_ms >= FALLBACK_S * 1000 and not self.pending:
                 self.pending = "resume" if self._is_bc(self.max_pf, self.pb_last, extra=FALLBACK_S) else True; self.ev("fallback")
-            if self.pending == "resume":
-                cut = self.cut; self.cut = None; r0 = cut["r"]
-                r = {"resume": r0, "cancel": False, "done": False, "gen_s": 0.0, "t_sil": self.t_sil, "t_out": None, "sgen": self.sgen,
-                     "user": None, "ukey": None}
-                self.ev("resume_start", after_silence_s=round(time.time() - self.t_sil, 3), p_backchannel=round(self.pb_last, 3))
-                self.reply = r; self.prev_user = None; self.t_reply = time.time(); self._reset(); self.jobs.put(("resume", r)); return
+            if self.pending == "resume": self._resume(); return
             if self.pending:
                 if SHARED and getattr(self, "cgen", None) == self.gen: ukey, user = self.ckey, self.caudio     # reply from the audio the last check heard (cached)
                 else: ukey, user = uuid.uuid4().hex, np.frombuffer(bytes(self.utt), np.float32).copy()
@@ -445,8 +491,16 @@ class Session:
                 self.ev("reply_start", user_s=round(len(user) / SR, 2), after_silence_s=round(time.time() - self.t_sil, 3))
                 self.reply = r; self.prev_user = user; self.t_reply = time.time(); self._reset(); self.jobs.put(("reply", r))
 
+    def _resume(self):
+        """Continue the reply that speech cut off (a backchannel, or a bystander)."""
+        cut = self.cut; self.cut = None; r0 = cut["r"]
+        r = {"resume": r0, "cancel": False, "done": False, "gen_s": 0.0, "t_sil": self.t_sil, "t_out": None, "sgen": self.sgen,
+             "user": None, "ukey": None}
+        self.ev("resume_start", after_silence_s=round(time.time() - self.t_sil, 3), p_backchannel=round(self.pb_last, 3))
+        self.reply = r; self.prev_user = None; self.t_reply = time.time(); self._reset(); self.jobs.put(("resume", r))
+
     def _onset(self):
-        r = self.reply; now = time.time(); self.sgen += 1
+        r = self.reply; now = time.time(); self.sgen += 1; self.uid += 1
         if r is not None and not r["cancel"] and not (r["done"] and r["t_out"] is not None and now - r["t_out"] - 0.25 >= r["gen_s"] - 0.3):
             if self.prev_user is not None and now - self.t_reply < MERGE_WINDOW:
                 # user resumed right after we started replying: we cut in too early -> abort that reply and merge the speech into this turn
