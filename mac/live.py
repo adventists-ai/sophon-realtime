@@ -70,7 +70,7 @@ if not a.no_aec:
     ins = sd.InputStream(device=a.din, samplerate=SR, channels=1, blocksize=FR, dtype="float32", callback=in_cb)
     outs = sd.OutputStream(device=a.dout, samplerate=SR, channels=1, blocksize=FR, dtype="float32", callback=out_cb)
     lat = int(round((ins.latency + outs.latency) * 1000)) + a.delay_ms
-    echo = Echo(lat); print(f"Echo cancellation on (device latency {lat} ms).", flush=True)
+    echo = Echo(lat); print(f"Echo cancellation on (device latency {lat} ms{', over 500 ms: Bluetooth/AirPlay/HDMI output? a headset works best with --no-aec' if lat > 500 else ''}).", flush=True)
 else:
     ins = sd.InputStream(device=a.din, samplerate=SR, channels=1, blocksize=FR, dtype="float32", callback=in_cb)
     outs = sd.OutputStream(device=a.dout, samplerate=SR, channels=1, blocksize=FR, dtype="float32", callback=out_cb)
