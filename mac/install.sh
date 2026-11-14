@@ -43,7 +43,7 @@ fi
 # --- code ------------------------------------------------------------------------------------------------------------------------------
 say "Program files"
 mkdir -p "$H/app"
-for f in engine.py mlx_ear.py aec.py live.py serve.py system_prompt.json; do rm -f "$H/app/$f"; cp "$HERE/$f" "$H/app/$f"; chmod 644 "$H/app/$f"; done
+for f in engine.py mlx_ear.py aec.py live.py serve.py speaker.py system_prompt.json; do rm -f "$H/app/$f"; cp "$HERE/$f" "$H/app/$f"; chmod 644 "$H/app/$f"; done
 cat > "$H/sophon" <<EOS
 #!/bin/bash
 exec "$H/.venv/bin/python" "$H/app/live.py" "\$@"
