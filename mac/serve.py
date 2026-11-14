@@ -1,11 +1,11 @@
 """Sophon Realtime on a Mac, served over a WebSocket: a network device supplies the microphone and the speaker.
 
-The wire format is the simplest one a small device can speak. Binary frames are raw PCM16 mono audio at --rate, in both directions. A text frame {"type": "interrupt"} means "stop talking now": the server sends it when the user barges in, so the client can drop audio it has buffered, and a client may send it to cut the reply itself (a wake word spoken over the reply, for example). With --events the server also sends the engine's own events (reply_start, first_audio, reply_done, barge_in, ...) as text frames.
+The wire format is the simplest one a small device can speak. Binary frames are raw PCM16 mono audio at --rate, in both directions. A text frame {"type": "interrupt"} means "stop talking now": the server sends it when the user barges in, so the client can drop audio it has buffered, and a client may send it to cut the reply itself (a wake word spoken over the reply, for example). Reply audio is sent in 20 ms frames, no further ahead of real time than LEAD_S: the engine produces speech faster than it is spoken, and a small device has no room to hold the difference. With --events the server also sends the engine's own events (reply_start, first_audio, reply_done, barge_in, ...) as text frames.
 
 The client is expected to cancel its own echo (a headset, or a device with hardware echo cancellation), so none is done here. One conversation at a time: a second client is refused while one is connected.
 
     python serve.py --host ADDRESS [--port 8765] [--rate 24000] [--lang zh|en] [--voice chelsie] [--events]"""
-import argparse, asyncio, json, os, sys
+import argparse, asyncio, collections, json, os, sys
 import numpy as np, websockets
 from scipy.signal import resample_poly
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path[:0] = [HERE, os.path.dirname(HERE)]
@@ -23,6 +23,8 @@ a = ap.parse_args()
 FR = 320                      # the engine takes 20 ms frames at 16 kHz
 OUT_RATE = 24000              # the engine's reply audio
 INTERRUPT = json.dumps({"type": "interrupt"})
+FRAME_S = 0.02               # reply audio goes out in frames this long
+LEAD_S = 0.12                # and at most this far ahead of the moment the client will play it
 busy = False
 
 
@@ -47,17 +49,29 @@ async def handle(ws):
         if a.events: loop.call_soon_threadsafe(out.put_nowait, m)
 
     async def send():
+        step = int(a.rate * FRAME_S) * 2                    # bytes in one frame
+        pending = collections.deque(); ends = 0.0           # loop time at which the audio already sent finishes playing
         while True:
-            m = await out.get()
+            wait = ends - LEAD_S - loop.time() if pending else None
+            if wait is None or wait > 0:
+                try: m = await asyncio.wait_for(out.get(), wait)
+                except asyncio.TimeoutError: m = b""
+            else:
+                m = b"" if out.empty() else out.get_nowait()
             if m is None:
-                kept = []                                   # audio queued before the cut is never sent; events are
+                pending.clear(); ends = 0.0; kept = []      # audio not yet sent is never sent; events are
                 while not out.empty():
                     q = out.get_nowait()
                     if isinstance(q, str): kept.append(q)
                 await ws.send(INTERRUPT)
                 for q in kept: await ws.send(q)
-            else:
+            elif isinstance(m, str):
                 await ws.send(m)
+            else:
+                pending.extend(m[i:i + step] for i in range(0, len(m), step))
+            if pending and loop.time() >= ends - LEAD_S:
+                f = pending.popleft(); await ws.send(f)
+                ends = max(ends, loop.time()) + len(f) / (2 * a.rate)
 
     sess = Session(brain, play, log=log); sender = asyncio.ensure_future(send()); buf = np.zeros(0, np.float32)
     try:

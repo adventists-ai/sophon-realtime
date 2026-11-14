@@ -37,7 +37,8 @@ The first start loads the model in about 10 seconds.
 `sophon-serve` runs the same engine with a WebSocket in place of the Mac's microphone and speakers, so a small device on the network can be
 the microphone and the speaker. Binary frames are raw PCM16 mono audio (24 kHz by default, `--rate` changes it) in both directions. The
 server sends the text frame `{"type": "interrupt"}` when you cut in, so the client can drop the audio it has buffered, and a client may send
-the same frame to cut the reply. `--events` also sends the engine's events as text frames. The client cancels its own echo (a headset, or a
+the same frame to cut the reply. Reply audio is paced: 20 ms frames, a fraction of a second
+ahead of real time at most, so a client needs only a small buffer. `--events` also sends the engine's events as text frames. The client cancels its own echo (a headset, or a
 device with hardware echo cancellation). There is no authentication, so `--host` is required and names one interface's address. One
 conversation at a time.
 
