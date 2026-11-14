@@ -17,6 +17,7 @@ FIRST_MS = int(__import__("os").environ.get("SOPHON_FIRST_MS", "20"))       # fi
 CHECKS = [0.2, 0.35, 0.5, 0.8, 1.3, 2.0]; THRS = [0.95, 0.85, 0.7, 0.5, 0.35, 0.25]; FALLBACK_S = 2.0; MERGE_WINDOW = 2.0
 SHARED = True        # turn question inside the reply context (one shared prefix); False = the server plugin's separate prompt
 HIST_TURNS = 8; HIST_SEC = 120.0; LEAD = int(__import__("os").environ.get("SOPHON_LEAD", "3")); MAX_REPLY_TOK = 400
+NOISE_CAP = 0.02   # the ambient-floor estimate never rises above this RMS, so speech is still detectable in a loud room
 ECHO_K_START, ECHO_K, ECHO_ADAPT_S = 0.5, 0.12, 3.0   # speech threshold while playing = k x playback loudness (see Session.feed)
 BC_RESUME, BC_THR, BC_WINDOW = True, 0.5, 4.0   # user only says "mm-hmm" over a reply that got cut: continue that reply (as the server)
 RECHECK_MS = 900   # a turn question takes ~0.85 s on an M4 Max: don't start one that would still be running at the fallback
@@ -280,7 +281,7 @@ class Session:
 
     def __init__(self, brain, play, log=print):
         self.b = brain; self.play = play; self.log = log; self.jobs = queue.Queue(); self.lock = threading.Lock()
-        self.history = []; self.last_said = ""; self.noise = 0.003; self.gen = 0; self.sgen = 0; self._reset()
+        self.history = []; self.last_said = ""; self.noise = 0.003; self.floor = collections.deque(maxlen=200); self.floor_n = 0; self.gen = 0; self.sgen = 0; self._reset()
         self.far_hist = collections.deque([0.0] * 10, maxlen=10); self.played_s = 0.0; self.cut = None
         self.pre = bytearray(); self.prev_user = None; self.t_reply = 0.0; self.reply = None; self.events = []
         threading.Thread(target=self._worker, daemon=True).start()
@@ -395,6 +396,11 @@ class Session:
             if fr > 1e-3: self.played_s += 0.02
         with self.lock:
             k = ECHO_K_START if self.played_s < ECHO_ADAPT_S else ECHO_K
+            # ambient floor: the quietest tenth of the last 4 s, speech or not. The estimate below only moves while nobody
+            # is speaking, so a room louder than the fixed threshold would otherwise read as one endless utterance.
+            self.floor.append(r); self.floor_n += 1
+            if self.floor_n % 25 == 0 and len(self.floor) == self.floor.maxlen:
+                self.noise = max(self.noise, min(sorted(self.floor)[len(self.floor) // 10], NOISE_CAP))
             thr = max(0.012, self.noise * 3.5, k * max(self.far_hist))
             if self.speech_ms == 0:
                 self.pre.extend(fb)
