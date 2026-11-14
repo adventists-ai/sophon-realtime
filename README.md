@@ -81,7 +81,7 @@ All three builds share the same brain: one 32B model that listens to your voice,
 | Non-verbal sounds (NVV-SuperBench, en / zh) | **0.80 / 0.86** | 0.63 / 0.77 | 0.75 / 0.85 |
 | First audio, one user | ~0.6 s | 0.31 s | **~0.25 s** |
 | Users per 80 GB GPU (recommended) | 16 | **40** | 16 |
-| Zero-shot voice cloning | **yes**, from a 3–10 s clip ([how](tag/README.md#zero-shot-voice-cloning)) | **yes**, from a 3–10 s clip ([how](flash/README.md#zero-shot-voice-cloning)) | no |
+| Zero-shot voice cloning | **yes**, from a 3–10 s clip ([how](tag/README.md#zero-shot-voice-cloning)) | **yes**, from a 3–10 s clip ([how](flash/README.md#zero-shot-voice-cloning)) | **yes**, from a 5–12 s clip ([how](e2e/README.md#zero-shot-voice-cloning-new-in-130)) |
 | GPUs | **1** × 80 GB | **1** × 80 GB | **1** × 80 GB |
 | Serving | vLLM-Omni, one command | vLLM-Omni, one command | own engine or vLLM-Omni, one command |
 | Weights | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) | [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) · [ModelScope](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) |
@@ -167,7 +167,7 @@ cd sophon-realtime/live && BUILD=tag PORT=8000 LIVE_PORT=8780 bash start_live.sh
 
 ## Zero-shot voice cloning (new in v1.1)
 
-Give Sophon a few seconds of someone's voice and it talks to you in that voice, in real time. No fine-tuning, no restart, one GPU. Works in the Tag and Flash builds.
+Give Sophon a few seconds of someone's voice and it talks to you in that voice, in real time. No fine-tuning, no restart, one GPU. Works in the Tag and Flash builds, and in E2E since 1.3.0.
 
 https://github.com/user-attachments/assets/7f0627b0-fae4-4633-b412-88cb24942ab8
 

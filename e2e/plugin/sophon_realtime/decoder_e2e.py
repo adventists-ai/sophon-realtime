@@ -10,6 +10,7 @@ from vllm.logger import init_logger
 from vllm_omni.model_executor.models.output_templates import OmniOutput
 
 from .bridge220 import _f32
+from . import clone
 
 logger = init_logger("vllm_omni.sophon_realtime.decoder")
 SR = 24000
@@ -88,9 +89,14 @@ class SophonE2EDecoder(nn.Module):
                         mu, last, lang = self._unpack(rows[k])
                         if x.R is None:
                             x.R = T.Render(C, lang); x.R.pend = torch.zeros(1, 80, 0, device=self.dummy.device)
+                            vp = clone.prompt(C, clone.take_voice(meta.get("request_id"), rid), lang, self.dummy.device, log=logger)
+                            if vp is not None:                     # cloned voice: same decoder, the clip as its reference prompt
+                                old = x.R.v2
+                                x.R.v2 = type(old)(C.dec, vp[0], vp[1], vp[2], ch=old.ch, left=old.left, nt=old.nt, cfg=old.cfg)
                         if mu.shape[2] > 0: q.append((mu, last)); x.n += 1
                     if q: items.append((i, x, q))
-                if fin: ended.append((rid, x))
+                if fin:
+                    ended.append((rid, x)); clone.drop_voice(meta.get("request_id"), rid)
             k = 0
             while True:                                            # k-th chunk of every request in one batch
                 reqs = [(i, x, q[k][0], q[k][1]) for i, x, q in items if k < len(q)]

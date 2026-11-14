@@ -31,7 +31,25 @@ bash stop.sh
 - 请保留整个仓库：插件要用到 `../sophon_expressive` 里的引擎代码。
 - `install.sh` 特意在 vLLM 之后再装 torch 2.14.1。用旧版 torch 时，发声的两段会多占约 50 GB 显存。
   这样装之后，启动日志里会有一条 `vllm.third_party.deep_gemm` 导入失败的警告；这个模块本模型用不到。
-- 一个内置音色（`chelsie`），支持中文和英文。需要声音克隆请用 Tag 或 Flash。
+- 一个内置音色（`chelsie`），支持中文和英文；其他声音用零样本克隆（见下）。
+
+## 零样本音色克隆（1.3.0 新增）
+
+给服务端一段想要的声音，按名字使用即可，和内置音色一样。无需微调，无需重启。
+
+```bash
+cp alice.wav model/voices/alice.wav   # 5–12 秒、只有一个人说话的清晰录音（wav 或 flac，16 kHz 及以上）
+python client_example.py --wav my_question.wav --lang zh --voice alice
+```
+
+- 解码器把这段录音当作参考提示（它的语音 token、梅尔帧和声纹向量，算法与 Tag 的音色文件相同）。需要 Tag 发布包里的两个小模型
+  `speech_tokenizer_v3.onnx` 和 `campplus.onnx`（约 1 GB），`install.sh` 会下载到 `model/clone_frontend/talker/`（`SKIP_CLONE=1` 跳过；
+  已有 Tag 模型时可用 `SOPHON_CLONE_FRONTEND=/path/to/Tag/model/talker` 直接指过去）。音色也可以放在模型目录之外：`SOPHON_VOICES=/path/to/voices`。
+- 第一次用到时准备并缓存，首包和内置音色一样快。替换声音直接覆盖文件，删除声音直接删文件。音色名用小写（`a-z 0-9 _ - .`）。
+  录音短于约 5 秒或读不了时，回落内置音色（日志会写原因）。
+- `/v1/chat/completions`（`"voice": "alice"`）和 `/v1/realtime`（`session.update` → `"voice": "alice"`）都能用，模型会说的语言都支持；
+  用一种语言的录音克隆的声音，也能说另一种语言。
+- **请只克隆自己的声音，或已获得声音主人许可的声音；不得用于冒充他人或欺诈。**
 
 ## 性能（单张 H100 80 GB，实测）
 

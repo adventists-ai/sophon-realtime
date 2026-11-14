@@ -12,6 +12,7 @@ from vllm_omni.model_executor.models.output_templates import OmniOutput
 
 from .bridge220 import _f32
 from . import segreg
+from . import clone
 
 logger = init_logger("vllm_omni.sophon_realtime.talker")
 FRAME, WAIT, STOP = 1000, 1001, 151645
@@ -126,6 +127,7 @@ class SophonE2ETalker(nn.Module):
                 lang = str(lang or "zh").lower()[:2]
                 R = self.T.Render.__new__(self.T.Render); R.C = self.core; R.u = 0; R.pend = None     # adapter bookkeeping only
                 st = self._st[rid] = _St(self.T.Session(self.core, lang if lang in LANGS else "zh", "", None), R)
+                spk = info.get("speaker"); clone.put_voice(rid, spk[0] if isinstance(spk, (list, tuple)) and spk else spk)   # for the decoder stage
             try:
                 self._sync_text(st, info, input_ids, is_prefill)
             except Exception as e:  # noqa: BLE001

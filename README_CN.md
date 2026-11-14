@@ -81,7 +81,7 @@ https://github.com/user-attachments/assets/4d6c74f5-3bbf-4dc2-8b11-f90ff85de4a2
 | 非语言声音（NVV-SuperBench，英 / 中） | **0.80 / 0.86** | 0.63 / 0.77 | 0.75 / 0.85 |
 | 单路首包 | 约 0.6 s | 0.31 s | **约 0.25 s** |
 | 每张 80 GB 卡建议并发 | 16 路 | **40 路** | 16 路 |
-| 零样本音色克隆 | **支持**，3–10 秒参考音（[用法](tag/README_CN.md#零样本音色克隆)） | **支持**，3–10 秒参考音（[用法](flash/README_CN.md#零样本音色克隆)） | 不支持 |
+| 零样本音色克隆 | **支持**，3–10 秒参考音（[用法](tag/README_CN.md#零样本音色克隆)） | **支持**，3–10 秒参考音（[用法](flash/README_CN.md#零样本音色克隆)） | **支持**，5–12 秒参考音（[用法](e2e/README_CN.md#零样本音色克隆130-新增)） |
 | 显卡 | **1** × 80 GB | **1** × 80 GB | **1** × 80 GB |
 | 部署 | vLLM-Omni，一条命令 | vLLM-Omni，一条命令 | 自研引擎或 vLLM-Omni，一条命令 |
 | 权重 | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Tag) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Tag) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-Flash) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-Flash) | [魔搭](https://www.modelscope.cn/models/AdventistsAI/Sophon-Realtime-32B-E2E) · [HF](https://huggingface.co/adventists-ai/Sophon-Realtime-32B-E2E) |
@@ -167,7 +167,7 @@ cd sophon-realtime/live && BUILD=tag PORT=8000 LIVE_PORT=8780 bash start_live.sh
 
 ## 零样本声音克隆（v1.1 新增）
 
-给智子几秒钟的录音，它就用这个声音和你实时对话。无需微调，无需重启，一张卡。Tag 版和 Flash 版均已支持。
+给智子几秒钟的录音，它就用这个声音和你实时对话。无需微调，无需重启，一张卡。Tag 版和 Flash 版均已支持，E2E 版 1.3.0 起也支持。
 
 https://github.com/user-attachments/assets/74bd6096-b6fc-4433-a1d7-d3e967107193
 

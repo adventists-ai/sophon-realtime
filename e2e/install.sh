@@ -24,5 +24,10 @@ if [ "${SKIP_DOWNLOAD:-0}" != 1 ] && [ ! -f model/talker220/config.json ]; then
   uv pip install $IDX modelscope
   modelscope download --model AdventistsAI/Sophon-Realtime-32B-E2E --local_dir model --exclude 'base/*' 'adapters/*'
 fi
+# voice cloning (1.3.0): two small models from the Tag release turn a reference clip into the decoder's prompt (~1 GB); skip with SKIP_CLONE=1
+if [ "${SKIP_DOWNLOAD:-0}" != 1 ] && [ "${SKIP_CLONE:-0}" != 1 ] && [ ! -f model/clone_frontend/talker/campplus.onnx ]; then
+  uv pip install $IDX modelscope
+  modelscope download --model AdventistsAI/Sophon-Realtime-32B-Tag --local_dir model/clone_frontend --include 'talker/speech_tokenizer_v3.onnx' 'talker/campplus.onnx'
+fi
 python -c "import torch, vllm, vllm_omni, sophon_realtime; assert torch.__version__.startswith('2.14.1'), torch.__version__; print('OK torch', torch.__version__, '| vllm', vllm.__version__, '| vllm-omni', vllm_omni.__version__, '| plugin', sophon_realtime.__version__)"
 echo "INSTALL_DONE — now: bash start.sh"

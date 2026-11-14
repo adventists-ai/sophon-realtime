@@ -32,7 +32,27 @@ bash stop.sh
 - Keep the whole repository: the plugin uses the engine code in `../sophon_expressive`.
 - `install.sh` installs torch 2.14.1 after vLLM on purpose. With an older torch the voice stages need about 50 GB more GPU memory.
   The start-up log then shows one warning that `vllm.third_party.deep_gemm` failed to import; that module is not used by this model.
-- One built-in voice (`chelsie`), Chinese and English. For voice cloning use Tag or Flash.
+- One built-in voice (`chelsie`), Chinese and English; any other voice by zero-shot cloning (below).
+
+## Zero-shot voice cloning (new in 1.3.0)
+
+Give the server a short clip of the voice you want and use its name like the built-in voice. No fine-tuning, no restart.
+
+```bash
+cp alice.wav model/voices/alice.wav   # 5-12 s of clean speech from one speaker (wav or flac, 16 kHz or more)
+python client_example.py --wav my_question.wav --lang en --voice alice
+```
+
+- The decoder takes the clip as its reference prompt (its speech tokens, mel frames and speaker embedding, computed as for Tag's voice
+  files). It needs two small models from the Tag release, `speech_tokenizer_v3.onnx` and `campplus.onnx` (about 1 GB); `install.sh`
+  downloads them to `model/clone_frontend/talker/` (`SKIP_CLONE=1` skips this; `SOPHON_CLONE_FRONTEND=/path/to/Tag/model/talker` uses a
+  copy you already have). Voices can also live outside the model directory: `SOPHON_VOICES=/path/to/voices`.
+- The voice is prepared the first time it is used and then cached; first audio is as fast as with the built-in voice. To replace a voice,
+  overwrite the file; to remove it, delete the file. Voice names are lower case (`a-z 0-9 _ - .`). A clip shorter than about 5 s, or one
+  that cannot be read, falls back to the built-in voice (the log says why).
+- Works with `/v1/chat/completions` (`"voice": "alice"`) and `/v1/realtime` (`session.update` → `"voice": "alice"`), in every language
+  the model speaks; a voice cloned from one language can speak another.
+- **Only clone your own voice or a voice you have permission to use. Do not use it to impersonate or deceive anyone.**
 
 ## Performance (one H100 80 GB, measured)
 
