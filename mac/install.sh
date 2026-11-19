@@ -22,7 +22,7 @@ die() { printf '\nERROR: %s\n' "$*" >&2; exit 1; }
 MAJ=$(sw_vers -productVersion | cut -d. -f1); [ "$MAJ" -ge 14 ] || die "needs macOS 14 or later."
 MEM=$(( $(sysctl -n hw.memsize) / 1073741824 ))
 if [ "$MEM" -lt "$MIN_GB" ]; then
-  [ "$SIZE" = 32B ] && [ "$MEM" -ge 16 ] && die "the 32B model needs at least 32 GB of unified memory (this Mac has ${MEM} GB). Try the 4B model: SIZE=4B bash install.sh"
+  [ "$SIZE" = 32B ] && [ "$MEM" -ge 16 ] && die "the 32B model needs at least 32 GB of unified memory (this Mac has ${MEM} GB). Try the 4B model: SIZE=4B bash mac/install.sh"
   die "needs at least ${MIN_GB} GB of unified memory (this Mac has ${MEM} GB). The $SIZE model uses about ${USE_GB} GB while talking."
 fi
 [ "$MEM" -ge "$REC_GB" ] || echo "Note: ${MEM} GB works but is tight; close other apps before starting. ${REC_GB} GB or more is recommended."
