@@ -14,7 +14,7 @@ uv python install 3.12
 [ -d .venv ] || uv venv --python 3.12 --seed .venv
 source .venv/bin/activate
 uv pip install $IDX vllm==0.30.0 ${TORCH_BACKEND:+--torch-backend=$TORCH_BACKEND}   # default: torch from the same index as vLLM; TORCH_BACKEND=auto = pytorch.org CUDA build
-uv pip install $IDX vllm-omni==0.30.0 duplexjev-vllm==0.3.0
+uv pip install $IDX vllm-omni==0.30.0 duplexjev-vllm==0.4.0
 if [ "${NO_TRT:-0}" != 1 ]; then   # TensorRT for the flow decoder (about 2x faster speech); optional
   uv pip install $IDX --no-deps tensorrt-cu13==10.13.3.9 tensorrt-cu13-bindings==10.13.3.9 tensorrt-cu13-libs==10.13.3.9 || echo "WARNING: TensorRT could not be installed; the voice will run in plain PyTorch, about 3x slower under load"
 fi

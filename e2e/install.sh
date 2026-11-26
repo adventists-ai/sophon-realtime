@@ -14,7 +14,7 @@ uv python install 3.12
 [ -d .venv ] || uv venv --python 3.12 --seed .venv
 source .venv/bin/activate
 uv pip install $IDX vllm==0.30.0 ${TORCH_BACKEND:+--torch-backend=$TORCH_BACKEND}
-uv pip install $IDX vllm-omni==0.30.0 duplexjev-vllm==0.3.0
+uv pip install $IDX vllm-omni==0.30.0 duplexjev-vllm==0.4.0
 uv pip install $IDX -e ./plugin
 # the voice stage needs torch 2.14.1 (with an older torch its compiled graphs take about 50 GB more GPU memory); install it last so nothing downgrades it
 uv pip install $IDX torch==2.14.1 torchaudio==2.11.0 torchvision==0.29.2 ${TORCH_BACKEND:+--torch-backend=$TORCH_BACKEND}

@@ -4,6 +4,12 @@ One version number for the whole Sophon-Realtime v1 family: the code in this rep
 ModelScope (git tags with the same name) and the `sophon-realtime` package on PyPI. Each entry says which builds changed.
 Second digit: new features or new weights; third digit: fixes only.
 
+## 1.6.3 (2026-11-26): the 4B builds hear the whole clip
+
+- **4B Tag, Flash and E2E dropped the last few percent of every audio chunk** before the brain heard it. The 4B brain was trained with the audio encoder's full output length (its config says `"audio_full_length": true`), but the installers pinned `duplexjev-vllm` 0.3.0, which ignores that setting and cuts each 30 s chunk to 12.5 tokens per second instead of 13. The installers now pin `duplexjev-vllm` 0.4.0, which reads the setting. The 32B builds do not use it and are unchanged.
+- Measured on one H100, 4B Tag, same plugin code, only `duplexjev-vllm` changed: Full-Duplex-Bench v1.0 four-task average 90.2 → 91.2 (pause handling and back-channels slightly better, turn-taking 0.07 s faster). The brain's turn decisions now match the vLLM-Omni in-tree implementation (vllm-project/vllm-omni#11149) on the same audio.
+- Existing installs: `uv pip install duplexjev-vllm==0.4.0` in the build's `.venv`, then restart. The `sophon-realtime` package on PyPI (1.3.0) still pins 0.3.0; if you serve a 4B build with it, run `pip install duplexjev-vllm==0.4.0` after installing it (pip reports the pin, the server works).
+
 ## 1.6.2 (2026-11-23): say always finishes, and works before the caller speaks
 
 - **A `say` could stop before the end of the sentence** ([#22](https://github.com/adventists-ai/sophon-realtime/issues/22)). Its token limit was the sentence's normal tokenization plus 16. Constrained decoding may spell the same words with more, shorter tokens, so a long read-back on the 4B stopped at its limit mid-sentence. The limit is now the sentence's length in UTF-8 bytes plus 8. Every token spells at least one byte, so the sentence always fits.

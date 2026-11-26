@@ -22,7 +22,7 @@ fi
 
 echo "[1/3] thinker environment (.venv-thinker)"
 mkvenv .venv-thinker
-pipi .venv-thinker -c scripts/constraints-thinker.txt "vllm[audio]==0.29.0" "duplexjev-vllm==0.3.0"
+pipi .venv-thinker -c scripts/constraints-thinker.txt "vllm[audio]==0.29.0" "duplexjev-vllm==0.4.0"
 
 echo "[2/3] engine environment (.venv-engine)"
 mkvenv .venv-engine
