@@ -54,7 +54,7 @@ fi
 # --- code ------------------------------------------------------------------------------------------------------------------------------
 say "Program files"
 mkdir -p "$H/app"
-for f in engine.py mlx_ear.py aec.py live.py serve.py speaker.py system_prompt.json; do rm -f "$H/app/$f"; cp "$HERE/$f" "$H/app/$f"; chmod 644 "$H/app/$f"; done
+for f in engine.py mlx_ear.py aec.py adapt.py live.py serve.py speaker.py system_prompt.json; do rm -f "$H/app/$f"; cp "$HERE/$f" "$H/app/$f"; chmod 644 "$H/app/$f"; done
 L=""; [ "$SIZE" = 4B ] && L="-4b"   # 32B keeps the old command names; 4B gets sophon-4b / sophon-4b-serve
 cat > "$H/sophon$L" <<EOS
 #!/bin/bash
