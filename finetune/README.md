@@ -7,6 +7,7 @@ You can adapt the **thinker** of Sophon-Realtime v1 (the part that listens and w
 - **What changes:** what the model says — content, persona, tone, domain knowledge, tool-calling habits.
 - **What does not:** turn-taking (turn questions go to the base model without the LoRA), and the voice, timbre and delivery (the talker).
 - **Expressive speech is kept:** the thinker writes sound tags (`[laughter]`, `[cough]`, `<strong>…</strong>`, …) and the talker performs them. Fine-tuning therefore **continues the bundled tag LoRA** instead of starting a new one; otherwise the model stops writing tags.
+- **4B builds** (Sophon-Realtime-4B-Tag / Flash / E2E): see [section 7](#7-4b-builds-sophon-realtime-4b-tag---flash---e2e).
 
 ## 1. Install
 
@@ -137,6 +138,46 @@ The report compares:
 - how many replies are identical
 
 Keep the tag rate close to the original, and keep malformed tags and wrong-language replies near zero.
+
+## 7. 4B builds (Sophon-Realtime-4B-Tag / -Flash / -E2E)
+
+> **Being verified.** The 4B tag LoRA, the format conversion and the merge step below are checked: merging the released tag LoRA into the base with `sophon_swift.merge` reproduces the released 4B thinker bit for bit. A full train → merge → serve run on GPU is still in progress; memory figures and a tested learning rate will be added after it.
+
+The three 4B builds share one thinker: DuplexJev-4B-Para v1.4 with the 4B tag LoRA (rank 16, alpha 32) merged in. Sections 1, 3 and 6 apply as written. What differs:
+
+**Download.** The base and the tag LoRA are in separate repos:
+
+```bash
+modelscope download --model AdventistsAI/DuplexJev-4B-Para --local_dir DuplexJev-4B-Para
+modelscope download --model AdventistsAI/Sophon-Realtime-4B-Tag --include 'adapters/*' --local_dir Sophon-Realtime-4B-Tag
+python -m sophon_swift.adapters to-swift Sophon-Realtime-4B-Tag/adapters/tag tag4b_swift
+```
+
+The same tag LoRA serves all three 4B builds.
+
+**Train.** As in section 4, with `--model DuplexJev-4B-Para --adapters tag4b_swift`. The tag LoRA itself was trained on the tag replay data for 2 epochs at learning rate 1e-4 (batch 4 × 2 accumulation, up to 4096 tokens, about 31 GB on one GPU); when continuing it on your data, start from 5e-5.
+
+**Merge, then serve.** The 4B servers do not attach a LoRA at run time, so merge yours into the base. This runs on CPU (about 17 GB of RAM, one to two minutes):
+
+```bash
+python -m sophon_swift.merge --base DuplexJev-4B-Para --lora output/vx-xxx/checkpoint-yyy \
+  --like ../flash/model/thinker --out thinker_mine
+```
+
+`--like` is the thinker of the build you serve (here a 4B Flash install in `../flash/model`); it supplies the config, tokenizer and file layout. Then build a model folder that uses your thinker and the build's other parts, and start the build on it:
+
+```bash
+mkdir model_mine
+for f in ../flash/model/*; do [ "$(basename "$f")" = thinker ] || ln -s "$(realpath "$f")" model_mine/; done
+mv thinker_mine model_mine/thinker
+MODEL_DIR=$PWD/model_mine bash ../flash/start.sh
+```
+
+**Things to know:**
+
+- **Turn-taking can change.** In the 4B builds the turn questions go to the same merged thinker, so unlike v1 your LoRA can change when the model takes the turn. Run the regression check of section 6 (serve `DuplexJev-4B-Para` with `tag=Sophon-Realtime-4B-Tag/adapters/tag`), and before deploying, try a few conversations with pauses and interruptions.
+- **Think block.** At inference the 4B chat template adds an empty `<think>\n\n</think>\n\n` after the assistant header; the training template here does not. The released tag LoRA was trained this way and keeps the reference tag rate (0.36 on 150 held-out conversations).
+- **Tool calls.** The 4B thinker does not support tool calling. Training on tool-call data may bring some of it back; we have not tested this.
 
 ## FAQ
 

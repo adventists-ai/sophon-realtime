@@ -9,6 +9,7 @@ Sophon-Realtime v1 可以按业务场景微调**思考器**，也就是听用户
   - 接话判断：话轮题走不带 LoRA 的底座，微调影响不到。
   - 声音、音色和说话方式：它们由说话头决定。
 - **笑声、咳嗽等声音表现会保留**：思考器在回复里写声音标签（`[laughter]`、`[cough]`、`<strong>…</strong>` 等），说话头照着标签演出来。所以微调要**从自带的写标签 LoRA 接着训**，不要从零训一个新 LoRA，否则模型就不会再写标签。
+- **4B 版**（Sophon-Realtime-4B-Tag / Flash / E2E）的做法见[第 7 节](#7-4b-版sophon-realtime-4b-tag---flash---e2e)。
 
 ## 1. 环境
 
@@ -142,6 +143,46 @@ python tools/regress.py --url http://127.0.0.1:8000 --data my_eval.jsonl --base 
 - 两者逐字相同的条数
 
 重点看两点：写标签的比例不要掉得太多；不合法标签和语言不对的数量应接近 0。
+
+## 7. 4B 版（Sophon-Realtime-4B-Tag / -Flash / -E2E）
+
+> **验证中。** 4B 的写标签 LoRA、格式转换和下面的合并步骤已经核对过：用 `sophon_swift.merge` 把发布的写标签 LoRA 合并进底座，得到的权重和发布的 4B 思考器逐位一致。在 GPU 上完整跑一遍「训练 → 合并 → 部署」还在进行，跑完后补上显存数字和实测过的学习率。
+
+三个 4B 版用同一个思考器：DuplexJev-4B-Para v1.4，合并了 4B 写标签 LoRA（rank 16，alpha 32）。第 1、3、6 节照常适用，不同的地方如下。
+
+**下载。** 底座和写标签 LoRA 在两个仓库里：
+
+```bash
+modelscope download --model AdventistsAI/DuplexJev-4B-Para --local_dir DuplexJev-4B-Para
+modelscope download --model AdventistsAI/Sophon-Realtime-4B-Tag --include 'adapters/*' --local_dir Sophon-Realtime-4B-Tag
+python -m sophon_swift.adapters to-swift Sophon-Realtime-4B-Tag/adapters/tag tag4b_swift
+```
+
+三个 4B 版都用这同一个写标签 LoRA。
+
+**训练。** 和第 4 节一样，改成 `--model DuplexJev-4B-Para --adapters tag4b_swift`。写标签 LoRA 本身是在标签回放数据上训的：2 个 epoch，学习率 1e-4，batch 4 × 累积 2，最长 4096 token，单卡约 31 GB。在你的数据上接着训时，学习率先用 5e-5。
+
+**先合并，再部署。** 4B 版的服务不会在运行时挂 LoRA，所以要把你的 LoRA 合并进底座。在 CPU 上就能做，约需 17 GB 内存、一两分钟：
+
+```bash
+python -m sophon_swift.merge --base DuplexJev-4B-Para --lora output/vx-xxx/checkpoint-yyy \
+  --like ../flash/model/thinker --out thinker_mine
+```
+
+`--like` 填你要部署的那个版本的思考器目录（这里是装在 `../flash/model` 的 4B Flash），配置、分词器和文件布局都从这里取。然后建一个模型目录，思考器换成你的，其余部分沿用原版，再用它启动：
+
+```bash
+mkdir model_mine
+for f in ../flash/model/*; do [ "$(basename "$f")" = thinker ] || ln -s "$(realpath "$f")" model_mine/; done
+mv thinker_mine model_mine/thinker
+MODEL_DIR=$PWD/model_mine bash ../flash/start.sh
+```
+
+**注意：**
+
+- **接话判断可能会变。** 4B 版的话轮题也走同一个合并后的思考器，所以和 v1 不同，你的 LoRA 可能改变模型什么时候接话。请做第 6 节的回归检查（部署 `DuplexJev-4B-Para`，用 `tag=Sophon-Realtime-4B-Tag/adapters/tag`）；上线前再试几段有停顿、有打断的对话。
+- **think 块。** 推理时 4B 的对话模板会在 assistant 开头后加一个空的 `<think>\n\n</think>\n\n`，这里的训练模板不加。发布的写标签 LoRA 就是这样训的，带标签比例和参照一致（150 条留出对话上为 0.36）。
+- **工具调用。** 4B 思考器不支持工具调用。用工具调用数据训练也许能找回一部分，我们还没有测试过。
 
 ## 常见问题
 
