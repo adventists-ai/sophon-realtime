@@ -9,7 +9,7 @@ servers do not attach a LoRA at run time. After fine-tuning the 4B tag LoRA, mer
         --like Sophon-Realtime-4B-Flash/thinker --out thinker_mine
 
 --like gives everything except the weights (config, tokenizer, chat template) and the shard layout. Only the LLM
-layers are changed; the audio encoder and the projector are copied from --base unchanged. No GPU needed (~17 GB RAM).
+layers are changed; the audio encoder and the projector are copied from --base unchanged. No GPU needed (about 13 GB of RAM for the 4B, under a minute).
 """
 import argparse
 import json

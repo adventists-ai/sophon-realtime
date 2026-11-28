@@ -4,6 +4,11 @@ One version number for the whole Sophon-Realtime v1 family: the code in this rep
 ModelScope (git tags with the same name) and the `sophon-realtime` package on PyPI. Each entry says which builds changed.
 Second digit: new features or new weights; third digit: fixes only.
 
+## Unreleased
+
+- **Fine-tuning the 4B builds** ([#25](https://github.com/adventists-ai/sophon-realtime/issues/25)). The 4B tag LoRA is now published in Sophon-Realtime-4B-Tag under `adapters/tag` (Hugging Face and ModelScope). New `finetune/sophon_swift/merge.py` merges a fine-tuned LoRA into the 4B base on CPU, since the 4B servers do not attach a LoRA at run time. See section 7 of the [fine-tuning guide](finetune/README.md).
+- **Flash: `MODEL_DIR` was ignored.** `flash/start.sh` read it to pick the 4B config but always served `./model`. It now serves `MODEL_DIR`, like Tag and E2E.
+
 ## 1.6.3 (2026-11-26): the 4B builds hear the whole clip
 
 - **4B Tag, Flash and E2E dropped the last few percent of every audio chunk** before the brain heard it. The 4B brain was trained with the audio encoder's full output length (its config says `"audio_full_length": true`), but the installers pinned `duplexjev-vllm` 0.3.0, which ignores that setting and cuts each 30 s chunk to 12.5 tokens per second instead of 13. The installers now pin `duplexjev-vllm` 0.4.0, which reads the setting. The 32B builds do not use it and are unchanged.

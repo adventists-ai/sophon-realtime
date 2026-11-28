@@ -141,7 +141,7 @@ Keep the tag rate close to the original, and keep malformed tags and wrong-langu
 
 ## 7. 4B builds (Sophon-Realtime-4B-Tag / -Flash / -E2E)
 
-> **Being verified.** The 4B tag LoRA, the format conversion and the merge step below are checked: merging the released tag LoRA into the base with `sophon_swift.merge` reproduces the released 4B thinker bit for bit. A full train → merge → serve run on GPU is still in progress; memory figures and a tested learning rate will be added after it.
+> Checked end to end on one H100 (2026-11-28): continue the tag LoRA → merge → regression check → serve in 4B Flash. Merging the released tag LoRA into the base with `sophon_swift.merge` reproduces the released 4B thinker bit for bit.
 
 The three 4B builds share one thinker: DuplexJev-4B-Para v1.4 with the 4B tag LoRA (rank 16, alpha 32) merged in. Sections 1, 3 and 6 apply as written. What differs:
 
@@ -155,9 +155,9 @@ python -m sophon_swift.adapters to-swift Sophon-Realtime-4B-Tag/adapters/tag tag
 
 The same tag LoRA serves all three 4B builds.
 
-**Train.** As in section 4, with `--model DuplexJev-4B-Para --adapters tag4b_swift`. The tag LoRA itself was trained on the tag replay data for 2 epochs at learning rate 1e-4 (batch 4 × 2 accumulation, up to 4096 tokens, about 31 GB on one GPU); when continuing it on your data, start from 5e-5.
+**Train.** As in section 4, with `--model DuplexJev-4B-Para --adapters tag4b_swift`. With the settings of section 4 (batch 1 × 8 accumulation, up to 4096 tokens), training used about 12 GB on one H100; 2,000 samples for one epoch took 14 minutes. A 24 GB GPU is enough. Start from learning rate 5e-5. (The tag LoRA itself was trained from scratch on the tag replay data: 2 epochs at 1e-4.)
 
-**Merge, then serve.** The 4B servers do not attach a LoRA at run time, so merge yours into the base. This runs on CPU (about 17 GB of RAM, one to two minutes):
+**Merge, then serve.** The 4B servers do not attach a LoRA at run time, so merge yours into the base. This runs on CPU (about 13 GB of RAM, under a minute):
 
 ```bash
 python -m sophon_swift.merge --base DuplexJev-4B-Para --lora output/vx-xxx/checkpoint-yyy \
@@ -175,6 +175,7 @@ MODEL_DIR=$PWD/model_mine bash ../flash/start.sh
 
 **Things to know:**
 
+- **What we measured.** Continuing the tag LoRA on 2,000 replay samples (as a stand-in for your data) and checking 150 held-out conversations: tag rate 0.367 vs 0.373 for the shipped tag LoRA, no malformed tags, no wrong-language replies (section 6). Served in 4B Flash after merging: tag rate 0.387 vs 0.373 for the released build (sampling at temperature 0.7).
 - **Turn-taking can change.** In the 4B builds the turn questions go to the same merged thinker, so unlike v1 your LoRA can change when the model takes the turn. Run the regression check of section 6 (serve `DuplexJev-4B-Para` with `tag=Sophon-Realtime-4B-Tag/adapters/tag`), and before deploying, try a few conversations with pauses and interruptions.
 - **Think block.** At inference the 4B chat template adds an empty `<think>\n\n</think>\n\n` after the assistant header; the training template here does not. The released tag LoRA was trained this way and keeps the reference tag rate (0.36 on 150 held-out conversations).
 - **Tool calls.** The 4B thinker does not support tool calling. Training on tool-call data may bring some of it back; we have not tested this.

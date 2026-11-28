@@ -146,7 +146,7 @@ python tools/regress.py --url http://127.0.0.1:8000 --data my_eval.jsonl --base 
 
 ## 7. 4B 版（Sophon-Realtime-4B-Tag / -Flash / -E2E）
 
-> **验证中。** 4B 的写标签 LoRA、格式转换和下面的合并步骤已经核对过：用 `sophon_swift.merge` 把发布的写标签 LoRA 合并进底座，得到的权重和发布的 4B 思考器逐位一致。在 GPU 上完整跑一遍「训练 → 合并 → 部署」还在进行，跑完后补上显存数字和实测过的学习率。
+> 已在一张 H100 上完整跑通（2026-11-28）：接着训写标签 LoRA → 合并 → 回归检查 → 用 4B Flash 部署。用 `sophon_swift.merge` 把发布的写标签 LoRA 合并进底座，得到的权重和发布的 4B 思考器逐位一致。
 
 三个 4B 版用同一个思考器：DuplexJev-4B-Para v1.4，合并了 4B 写标签 LoRA（rank 16，alpha 32）。第 1、3、6 节照常适用，不同的地方如下。
 
@@ -160,9 +160,9 @@ python -m sophon_swift.adapters to-swift Sophon-Realtime-4B-Tag/adapters/tag tag
 
 三个 4B 版都用这同一个写标签 LoRA。
 
-**训练。** 和第 4 节一样，改成 `--model DuplexJev-4B-Para --adapters tag4b_swift`。写标签 LoRA 本身是在标签回放数据上训的：2 个 epoch，学习率 1e-4，batch 4 × 累积 2，最长 4096 token，单卡约 31 GB。在你的数据上接着训时，学习率先用 5e-5。
+**训练。** 和第 4 节一样，改成 `--model DuplexJev-4B-Para --adapters tag4b_swift`。按第 4 节的设置（batch 1 × 累积 8，最长 4096 token），单张 H100 上训练约占 12 GB，2000 条训 1 个 epoch 用了 14 分钟，24 GB 的卡就够。学习率先用 5e-5。（写标签 LoRA 本身是在标签回放数据上从零训的：2 个 epoch，学习率 1e-4。）
 
-**先合并，再部署。** 4B 版的服务不会在运行时挂 LoRA，所以要把你的 LoRA 合并进底座。在 CPU 上就能做，约需 17 GB 内存、一两分钟：
+**先合并，再部署。** 4B 版的服务不会在运行时挂 LoRA，所以要把你的 LoRA 合并进底座。在 CPU 上就能做，约需 13 GB 内存、不到一分钟：
 
 ```bash
 python -m sophon_swift.merge --base DuplexJev-4B-Para --lora output/vx-xxx/checkpoint-yyy \
@@ -180,6 +180,7 @@ MODEL_DIR=$PWD/model_mine bash ../flash/start.sh
 
 **注意：**
 
+- **实测。** 用 2000 条回放数据代替你的数据接着训，在 150 条留出对话上检查：带标签比例 0.367（自带写标签 LoRA 为 0.373），没有格式错误的标签，没有答错语言（第 6 节）。合并后用 4B Flash 部署：带标签比例 0.387（发布版 0.373；温度 0.7 采样）。
 - **接话判断可能会变。** 4B 版的话轮题也走同一个合并后的思考器，所以和 v1 不同，你的 LoRA 可能改变模型什么时候接话。请做第 6 节的回归检查（部署 `DuplexJev-4B-Para`，用 `tag=Sophon-Realtime-4B-Tag/adapters/tag`）；上线前再试几段有停顿、有打断的对话。
 - **think 块。** 推理时 4B 的对话模板会在 assistant 开头后加一个空的 `<think>\n\n</think>\n\n`，这里的训练模板不加。发布的写标签 LoRA 就是这样训的，带标签比例和参照一致（150 条留出对话上为 0.36）。
 - **工具调用。** 4B 思考器不支持工具调用。用工具调用数据训练也许能找回一部分，我们还没有测试过。
